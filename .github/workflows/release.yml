@@ -1,0 +1,140 @@
+# PR-D3: 打 tag v*.*.* 时自动发布 release 资源并推送 Docker 到 GHCR
+# 对外命名: dashboard / control / runner
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  release-assets:
+    name: Build & Upload Release Assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build control (API)
+        run: pnpm build:api
+
+      - name: Build dashboard (Web)
+        run: pnpm build:web
+
+      - name: Pack control tarball
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p release/control release/worker
+          cp -r apps/api/dist apps/api/migrations apps/api/package.json release/control/
+          (cd release/control && npm install --omit=dev)
+          mkdir -p release/control/dashboard
+          cp -r apps/web/dist/* release/control/dashboard/
+          tar -czvf "bullboard-control-linux-amd64-${VERSION}.tar.gz" -C release control
+          mv "bullboard-control-linux-amd64-${VERSION}.tar.gz" release/
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build runner
+        working-directory: apps/runner-go
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o runner .
+
+      - name: Pack worker tarball
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p release/worker
+          cp apps/runner-go/runner release/worker/
+          tar -czvf "bullboard-worker-linux-amd64-${VERSION}.tar.gz" -C release worker
+          mv "bullboard-worker-linux-amd64-${VERSION}.tar.gz" release/
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd release
+          sha256sum bullboard-control-linux-amd64-*.tar.gz bullboard-worker-linux-amd64-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create Release & Upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/bullboard-control-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+            release/bullboard-worker-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+            release/SHA256SUMS
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    name: Build & Push Docker images
+    runs-on: ubuntu-latest
+    needs: release-assets
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image: [control, dashboard, runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set registry owner (lowercase for GHCR)
+        run: echo "REGISTRY_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.REGISTRY_OWNER }}/bullboard-${{ matrix.image }}
+          tags: |
+            type=ref,event=tag,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.${{ matrix.image }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,10 @@
+node_modules
+dist
+*.log
+.env
+.env.local
+.DS_Store
+artifacts/*
+!artifacts/.gitkeep
+data/*.db
+!data/.gitkeep

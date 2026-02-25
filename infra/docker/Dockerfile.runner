@@ -1,0 +1,28 @@
+# Bull Board Runner（Go 执行器）+ git（用于 worktree）
+# 构建上下文: 仓库根目录，例: docker build -f infra/docker/Dockerfile.runner -t bullboard-runner .
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache git
+
+COPY apps/runner-go/ ./
+RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o runner .
+
+FROM alpine:3.19
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /app
+
+COPY --from=builder /app/runner .
+
+ENV SQLITE_PATH=/shared/data/bullboard.db
+ENV ARTIFACTS_DIR=/shared/artifacts
+ENV API_BASE_URL=http://control:3000
+ENV RUNNER_ID=runner-1
+ENV MAX_CONCURRENCY=1
+ENV LEASE_SECONDS=600
+
+CMD ["./runner"]

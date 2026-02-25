@@ -1,0 +1,77 @@
+# Bull Board - Docker Compose
+# profiles: control（dashboard + control），worker（runner）
+# 使用方式: docker compose --profile control --profile worker up -d
+# 本地构建: 在仓库根执行 docker compose -f infra/docker/docker-compose.yml --profile control build
+# 然后: docker compose -f infra/docker/docker-compose.yml --profile control up -d
+
+services:
+  control:
+    image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-control:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.control
+    container_name: bullboard-control
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      SQLITE_PATH: /shared/data/bullboard.db
+    volumes:
+      - shared_data:/shared/data
+      - shared_artifacts:/shared/artifacts
+      - shared_worktrees:/shared/worktrees
+      - shared_config:/shared/config
+    ports:
+      - "${CONTROL_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - control
+
+  dashboard:
+    image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-dashboard:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.dashboard
+    container_name: bullboard-dashboard
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-8080}:80"
+    depends_on:
+      control:
+        condition: service_healthy
+    profiles:
+      - control
+
+  runner:
+    image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-runner:${IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.runner
+    container_name: bullboard-runner
+    restart: unless-stopped
+    environment:
+      SQLITE_PATH: /shared/data/bullboard.db
+      ARTIFACTS_DIR: /shared/artifacts
+      API_BASE_URL: http://control:3000
+      RUNNER_ID: runner-1
+      MAX_CONCURRENCY: 1
+      LEASE_SECONDS: 600
+    volumes:
+      - shared_data:/shared/data
+      - shared_artifacts:/shared/artifacts
+      - shared_worktrees:/shared/worktrees
+      - shared_config:/shared/config
+    depends_on:
+      control:
+        condition: service_healthy
+    profiles:
+      - worker
+
+volumes:
+  shared_data:
+  shared_artifacts:
+  shared_worktrees:
+  shared_config:
