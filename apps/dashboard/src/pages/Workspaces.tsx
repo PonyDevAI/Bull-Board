@@ -29,28 +29,29 @@ export function Workspaces() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Workspaces</h2>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-2 md:gap-1">
+        <h1 className="text-lg font-semibold text-slate-800 md:text-xl">数据管理</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-500 md:text-sm">Data Management</span>
           <Link to="/board">
-            <Button variant="outline">看板</Button>
+            <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px]">任务控制中心</Button>
           </Link>
-          <Button onClick={() => setDialog(true)}>新增 Workspace</Button>
+          <Button size="sm" className="min-h-[44px] min-w-[44px]" onClick={() => setDialog(true)}>新增 Workspace</Button>
         </div>
       </div>
       {loading ? (
         <p className="text-slate-500">加载中...</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {list.map((w) => (
-            <Card key={w.id}>
+            <Card key={w.id} className="overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">{w.name}</CardTitle>
+                <CardTitle className="text-base truncate">{w.name}</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-slate-600">
-                <p>{w.repoPath}</p>
+                <p className="break-all">{w.repoPath}</p>
                 <Link to={"/board?workspace_id=" + w.id}>
-                  <Button variant="outline" size="sm" className="mt-2">
+                  <Button variant="outline" size="sm" className="mt-2 min-h-[44px] min-w-[44px]">
                     看板
                   </Button>
                 </Link>
@@ -60,10 +61,10 @@ export function Workspaces() {
         </div>
       )}
       {dialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-auto md:max-h-none rounded-t-xl md:rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>新增 Workspace</CardTitle>
+              <CardTitle>新增 Workspace（计划）</CardTitle>
               <Button variant="outline" size="sm" onClick={() => setDialog(false)}>
                 关闭
               </Button>

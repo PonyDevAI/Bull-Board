@@ -50,12 +50,12 @@ export function TaskDetail() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
         <Link to="/board">
-          <Button variant="outline" size="sm">← 看板</Button>
+          <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px]">← 看板</Button>
         </Link>
-        <h2 className="text-lg font-semibold">{task.title}</h2>
-        <span className="rounded bg-slate-200 px-2 py-0.5 text-sm">{task.status}</span>
+        <h2 className="text-base font-semibold break-words md:text-lg">{task.title}</h2>
+        <span className="rounded bg-slate-200 px-2 py-1 text-sm w-fit">{task.status}</span>
       </div>
 
       <Card>
@@ -68,6 +68,7 @@ export function TaskDetail() {
               key={s}
               variant={task.status === s ? "default" : "outline"}
               size="sm"
+              className="min-h-[44px] min-w-[44px]"
               onClick={() => handleStatus(s)}
             >
               {s.replace("_", " ")}

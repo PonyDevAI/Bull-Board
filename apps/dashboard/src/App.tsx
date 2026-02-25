@@ -1,5 +1,6 @@
-import { Routes, Route, Link } from "react-router-dom";
-import { buttonVariants } from "@/components/ui/button";
+import { Routes, Route, Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getWorkspaces, type Workspace } from "@/api";
 import { Workspaces } from "@/pages/Workspaces";
 import { Board } from "@/pages/Board";
 import { TaskDetail } from "@/pages/TaskDetail";
@@ -7,46 +8,206 @@ import { TaskDetail } from "@/pages/TaskDetail";
 function Home() {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Bull Board</h2>
-      <p className="text-slate-600">看板控制台 v0.1</p>
-      <div className="flex gap-2">
-        <Link to="/workspaces" className={buttonVariants()}>
-          Workspaces
+      <h2 className="text-lg font-semibold text-slate-800">大脑指挥室</h2>
+      <p className="text-slate-600">Bull Board 看板控制台 v0.1</p>
+      <div className="flex flex-wrap gap-2">
+        <Link to="/board" className="min-h-[44px] min-w-[44px] rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600">
+          任务中心
         </Link>
-        <Link to="/board" className={buttonVariants({ variant: "outline" })}>
-          看板
+        <Link to="/workspaces" className="min-h-[44px] min-w-[44px] rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          数据管理
         </Link>
       </div>
     </div>
   );
 }
 
-export default function App() {
+function Sidebar({
+  workspaces,
+  onClose,
+  isMobile,
+}: {
+  workspaces: Workspace[];
+  onClose?: () => void;
+  isMobile?: boolean;
+}) {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (isMobile && onClose) onClose();
+  }, [location.pathname, location.search, isMobile, onClose]);
+
+  const nav = [
+    { to: "/board", label: "任务中心", sub: "Tasks", icon: "trashcan" },
+    { to: "/logs", label: "系统日志", sub: "Logs", icon: "doc" },
+  ];
+
+  const content = (
+    <>
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 p-4">
+        <span className="flex items-center gap-2">
+          <span className="text-lg text-slate-400">⚙</span>
+          <span className="text-sm font-semibold text-slate-800">大脑指挥室 (Console)</span>
+        </span>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            aria-label="关闭菜单"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <nav className="flex flex-col gap-0.5 p-2">
+        {nav.map(({ to, label, sub, icon }) => {
+          const active = to === "/board" ? location.pathname.startsWith("/board") || location.pathname.startsWith("/tasks") : location.pathname === to;
+          if (to === "/logs") {
+            return (
+              <div
+                key={to}
+                className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 min-h-[44px]"
+                title="敬请期待"
+              >
+                <span className="text-slate-300">{icon === "doc" ? "📄" : "🗑"}</span>
+                <span>{label}</span>
+                <span className="ml-auto text-xs">({sub})</span>
+              </div>
+            );
+          }
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={`flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${
+                active ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <span className={active ? "text-blue-500" : "text-slate-400"}>{icon === "trashcan" ? "🗑" : "📄"}</span>
+              <span className="font-medium">{label}</span>
+              <span className="ml-auto text-xs text-slate-400">({sub})</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-4 flex flex-1 flex-col overflow-auto border-t border-slate-100 p-3">
+        <p className="mb-2 px-1 text-xs font-medium text-slate-500">客户端列表</p>
+        {workspaces.length === 0 ? (
+          <p className="px-1 text-xs text-slate-400">暂无 Workspace</p>
+        ) : (
+          workspaces.map((w) => (
+            <Link
+              key={w.id}
+              to={"/board?workspace_id=" + w.id}
+              className="mb-2 flex min-h-[44px] items-center justify-between rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <span className="flex items-center gap-2 truncate">
+                <span className="text-slate-400">🖥</span>
+                <span className="truncate">{w.name}</span>
+              </span>
+              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                空闲
+              </span>
+            </Link>
+          ))
+        )}
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <aside className="fixed inset-y-0 left-0 z-50 flex w-[min(85vw,280px)] flex-col border-r border-slate-200 bg-white shadow-xl">
+        {content}
+      </aside>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b bg-white px-6 py-4">
-        <div className="container mx-auto flex max-w-6xl items-center justify-between">
-          <Link to="/" className="text-xl font-semibold text-slate-800">
-            Bull Board
-          </Link>
-          <nav className="flex gap-2">
-            <Link to="/workspaces" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-              Workspaces
-            </Link>
-            <Link to="/board" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-              看板
-            </Link>
-          </nav>
-        </div>
-      </header>
-      <main className="container mx-auto max-w-6xl p-6">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/workspaces" element={<Workspaces />} />
-          <Route path="/board" element={<Board />} />
-          <Route path="/tasks/:id" element={<TaskDetail />} />
-        </Routes>
-      </main>
+    <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+      {content}
+    </aside>
+  );
+}
+
+export default function App() {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    getWorkspaces().then(setWorkspaces).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const handler = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const showDrawer = isMobile && sidebarOpen;
+
+  return (
+    <div className="flex h-screen bg-white">
+      {/* 桌面侧栏 */}
+      <Sidebar workspaces={workspaces} isMobile={false} />
+
+      {/* 移动端抽屉 */}
+      {showDrawer && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden
+          />
+          <Sidebar
+            workspaces={workspaces}
+            onClose={() => setSidebarOpen(false)}
+            isMobile
+          />
+        </>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 md:px-6">
+          <div className="flex min-h-[44px] min-w-[44px] items-center gap-2 md:min-w-0">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden"
+              aria-label="打开菜单"
+            >
+              ☰
+            </button>
+            <span className="truncate text-base font-bold text-slate-900 md:text-xl">Bull Board 监控中心</span>
+            <span className="hidden text-slate-400 md:inline">🌙</span>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="hidden items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600 sm:flex md:px-3">
+              <span className="truncate max-w-[120px] md:max-w-none">Bull Board (S端)</span>
+              <span className="text-slate-400">▾</span>
+            </div>
+            <button type="button" className="min-h-[44px] min-w-[44px] rounded-full p-2 text-slate-500 hover:bg-slate-100" title="刷新">
+              <span className="text-lg">🔄</span>
+            </button>
+            <div className="flex h-6 w-10 items-center rounded-full bg-slate-200 min-h-[44px] min-w-[44px] justify-center md:min-h-0 md:min-w-0 md:justify-start">
+              <div className="ml-1 h-4 w-4 rounded-full bg-white shadow" />
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 overflow-auto bg-white p-4 md:p-6">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/workspaces" element={<Workspaces />} />
+            <Route path="/board" element={<Board />} />
+            <Route path="/tasks/:id" element={<TaskDetail />} />
+            <Route path="/logs" element={<div className="p-4 text-slate-500">系统日志（敬请期待）</div>} />
+          </Routes>
+        </main>
+      </div>
     </div>
   );
 }
