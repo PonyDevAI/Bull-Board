@@ -2,16 +2,16 @@
 
 ## 修改文件清单
 
-- `apps/api/src/sse.ts` - SSE 订阅者集合与 broadcast(event, data)
-- `apps/api/src/orchestrator.ts` - enqueue()、applyReport()，状态机：VERIFY 成功→done；code/test 失败→fix_round++、in_progress、system message；infra→failed
-- `apps/api/src/routes/events.ts` - 注册时 addSubscriber(reply.raw)，便于广播
-- `apps/api/src/routes/runner.ts` - POST /api/runner/report（Runner 回调）
-- `apps/api/src/routes/tasks.ts` - POST /api/tasks/:id/enqueue（mode + payload）
-- `apps/api/src/index.ts` - 注册 runnerRoutes
+- `apps/control/src/sse.ts` - SSE 订阅者集合与 broadcast(event, data)
+- `apps/control/src/orchestrator.ts` - enqueue()、applyReport()，状态机：VERIFY 成功→done；code/test 失败→fix_round++、in_progress、system message；infra→failed
+- `apps/control/src/routes/events.ts` - 注册时 addSubscriber(reply.raw)，便于广播
+- `apps/control/src/routes/runner.ts` - POST /api/runner/report（Runner 回调）
+- `apps/control/src/routes/tasks.ts` - POST /api/tasks/:id/enqueue（mode + payload）
+- `apps/control/src/index.ts` - 注册 runnerRoutes
 
 ## 启动命令
 
-同 PR-02：`pnpm build:api` 后 `SQLITE_PATH=./data/bullboard.db node apps/api/dist/index.js`（从仓库根）。
+同 PR-02：`pnpm build:control` 后 `SQLITE_PATH=./data/bullboard.db node apps/control/dist/index.js`（从仓库根）。
 
 ## 验证步骤
 

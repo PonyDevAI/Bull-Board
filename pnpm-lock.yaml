@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  apps/api:
+  apps/control:
     dependencies:
       better-sqlite3:
         specifier: ^11.6.0
@@ -30,7 +30,7 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
 
-  apps/web:
+  apps/dashboard:
     dependencies:
       class-variance-authority:
         specifier: ^0.7.0

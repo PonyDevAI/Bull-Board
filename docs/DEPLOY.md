@@ -1,6 +1,6 @@
 # Bull Board 部署指南
 
-本文档说明 Bull Board 的两种部署模式：**Tier 1（local）** 与 **Tier 2（docker）**，以及统一安装脚本的用法。
+本文档说明 Bull Board 的两种部署模式：**Tier 1（local）** 与 **Tier 2（docker）**，以及统一安装脚本的用法。对外命名统一为：**dashboard**（前端）、**control**（Control Plane，Fastify API + 状态机 + SQLite + SSE）、**runner**（Go 执行器）；源码目录为 `apps/dashboard`、`apps/control`、`apps/runner`。
 
 ---
 
@@ -28,7 +28,7 @@
   - `--version latest|vX.Y.Z`（默认 `latest`）
   - `--prefix <dir>`（默认 `/opt/bull-board`）
   - `uninstall` 时：`--purge-data` 才会删除 shared 数据
-  - **`--from-repo`**（仅 install/upgrade）：从当前仓库构建目录安装，不下载 release；需先执行 `pnpm build:api`、构建 web 与 runner，适合本地/开发验证
+  - **`--from-repo`**（仅 install/upgrade）：从当前仓库构建目录安装，不下载 release；需先构建 **control**、**dashboard** 与 **runner**（如 `pnpm build:control`、`pnpm build:dashboard`、在 `apps/runner` 构建），适合本地/开发验证
 
 ---
 
@@ -63,7 +63,7 @@
 # 自定义前缀
 ./infra/deploy/install.sh install --prefix /opt/bull-board
 
-# 从当前仓库安装（无需 release，先 pnpm build:api 并构建 web、runner）
+# 从当前仓库安装（无需 release，先构建 control、dashboard 与 runner）
 ./infra/deploy/install.sh install --from-repo --prefix /opt/bull-board
 ```
 

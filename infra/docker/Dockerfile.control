@@ -4,12 +4,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY apps/api/package.json ./
+COPY apps/control/package.json ./
 RUN npm install
 
-COPY apps/api/tsconfig.json ./
-COPY apps/api/src ./src
-COPY apps/api/migrations ./migrations
+COPY apps/control/tsconfig.json ./
+COPY apps/control/src ./src
+COPY apps/control/migrations ./migrations
 RUN npx tsc
 RUN npm prune --production
 
@@ -20,7 +20,7 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/migrations ./migrations
-COPY apps/api/package.json ./
+COPY apps/control/package.json ./
 
 ENV NODE_ENV=production
 ENV PORT=3000

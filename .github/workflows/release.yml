@@ -41,20 +41,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build control (API)
-        run: pnpm build:api
+      - name: Build control
+        run: pnpm build:control
 
-      - name: Build dashboard (Web)
-        run: pnpm build:web
+      - name: Build dashboard
+        run: pnpm build:dashboard
 
       - name: Pack control tarball
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           mkdir -p release/control release/worker
-          cp -r apps/api/dist apps/api/migrations apps/api/package.json release/control/
+          cp -r apps/control/dist apps/control/migrations apps/control/package.json release/control/
           (cd release/control && npm install --omit=dev)
           mkdir -p release/control/dashboard
-          cp -r apps/web/dist/* release/control/dashboard/
+          cp -r apps/dashboard/dist/* release/control/dashboard/
           tar -czvf "bullboard-control-linux-amd64-${VERSION}.tar.gz" -C release control
           mv "bullboard-control-linux-amd64-${VERSION}.tar.gz" release/
 
@@ -64,14 +64,14 @@ jobs:
           go-version: '1.21'
 
       - name: Build runner
-        working-directory: apps/runner-go
+        working-directory: apps/runner
         run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o runner .
 
       - name: Pack worker tarball
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           mkdir -p release/worker
-          cp apps/runner-go/runner release/worker/
+          cp apps/runner/runner release/worker/
           tar -czvf "bullboard-worker-linux-amd64-${VERSION}.tar.gz" -C release worker
           mv "bullboard-worker-linux-amd64-${VERSION}.tar.gz" release/
 

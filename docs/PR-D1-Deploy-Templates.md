@@ -8,9 +8,9 @@
 - **infra/deploy/templates/nginx/bullboard.conf.tpl** - nginx 反代（upstream **control_backend**，占位 `{{CONTROL_UPSTREAM}}`），含 **SSE（proxy_buffering off）**
 - **infra/deploy/templates/env/bullboard.env.example** - 共享配置示例（Control / Runner 段）
 - **infra/docker/docker-compose.yml** - services：**control**、**dashboard**、**runner**；profiles：**control**（dashboard+control）、**worker**（runner）；镜像 bullboard-control、bullboard-dashboard、bullboard-runner
-- **infra/docker/Dockerfile.control** - Node 多阶段构建，产出 Control 镜像（源码 apps/api）
-- **infra/docker/Dockerfile.dashboard** - Node 构建静态 + nginx 反代 /api 到 control（源码 apps/web）
-- **infra/docker/Dockerfile.runner** - Go 多阶段构建，alpine + git，产出 Runner 镜像（源码 apps/runner-go）
+- **infra/docker/Dockerfile.control** - Node 多阶段构建，产出 Control 镜像（源码 apps/control）
+- **infra/docker/Dockerfile.dashboard** - Node 构建静态 + nginx 反代 /api 到 control（源码 apps/dashboard）
+- **infra/docker/Dockerfile.runner** - Go 多阶段构建，alpine + git，产出 Runner 镜像（源码 apps/runner）
 
 ## 验证步骤（本地）
 

@@ -170,9 +170,9 @@ SSE:
 ## 6. 目录结构
 bull-board/
   apps/
-    api/
-    web/
-    runner-go/
+    control/
+    dashboard/
+    runner/
   packages/
     shared/
   docs/

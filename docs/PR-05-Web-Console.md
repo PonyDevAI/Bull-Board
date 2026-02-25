@@ -2,21 +2,21 @@
 
 ## 修改文件清单
 
-- `apps/web/package.json` - 增加 react-router-dom
-- `apps/web/src/App.tsx` - Router、导航、Routes（/、/workspaces、/board、/tasks/:id）
-- `apps/web/src/main.tsx` - BrowserRouter 包裹
-- `apps/web/src/api.ts` - getWorkspaces/createWorkspace、getTasks/createTask、getTask、updateTaskStatus、getTaskMessages、getTaskRuns、artifactDownloadUrl、enqueueTask
-- `apps/web/src/useSSE.ts` - EventSource 订阅 /api/events，监听 task_status_changed / run_status_changed 触发回调
-- `apps/web/src/pages/Workspaces.tsx` - 列表 + 新增 Dialog（name、repo_path）
-- `apps/web/src/pages/Board.tsx` - 按状态列展示 tasks，新建 Task 表单，SSE 刷新
-- `apps/web/src/pages/TaskDetail.tsx` - 状态切换按钮、Tabs（Messages/Runs/Artifacts）、Actions 占位
-- `apps/web/src/components/ui/button.tsx` - 增加 ghost variant
+- `apps/dashboard/package.json` - 增加 react-router-dom
+- `apps/dashboard/src/App.tsx` - Router、导航、Routes（/、/workspaces、/board、/tasks/:id）
+- `apps/dashboard/src/main.tsx` - BrowserRouter 包裹
+- `apps/dashboard/src/api.ts` - getWorkspaces/createWorkspace、getTasks/createTask、getTask、updateTaskStatus、getTaskMessages、getTaskRuns、artifactDownloadUrl、enqueueTask
+- `apps/dashboard/src/useSSE.ts` - EventSource 订阅 /api/events，监听 task_status_changed / run_status_changed 触发回调
+- `apps/dashboard/src/pages/Workspaces.tsx` - 列表 + 新增 Dialog（name、repo_path）
+- `apps/dashboard/src/pages/Board.tsx` - 按状态列展示 tasks，新建 Task 表单，SSE 刷新
+- `apps/dashboard/src/pages/TaskDetail.tsx` - 状态切换按钮、Tabs（Messages/Runs/Artifacts）、Actions 占位
+- `apps/dashboard/src/components/ui/button.tsx` - 增加 ghost variant
 
 ## 启动命令
 
 ```bash
-pnpm dev:api   # 终端 1
-pnpm dev:web   # 终端 2
+pnpm dev:control   # 终端 1
+pnpm dev:dashboard   # 终端 2
 ```
 
 ## 验证步骤

@@ -1,5 +1,5 @@
 {
-  "name": "api",
+  "name": "@bullboard/control",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -2,8 +2,8 @@
 
 ## 修改文件清单
 
-- `apps/runner-go/go.mod` - module + modernc.org/sqlite
-- `apps/runner-go/main.go` - 领 job（事务 SELECT + UPDATE）、VERIFY/CODE_CHANGE/SUBMIT 执行、git worktree、artifacts 落盘、回调 POST /api/runner/report、job 状态与重试 backoff
+- `apps/runner/go.mod` - module + modernc.org/sqlite
+- `apps/runner/main.go` - 领 job（事务 SELECT + UPDATE）、VERIFY/CODE_CHANGE/SUBMIT 执行、git worktree、artifacts 落盘、回调 POST /api/runner/report、job 状态与重试 backoff
 
 ## 配置（环境变量）
 
@@ -19,14 +19,14 @@
 
 ```bash
 # 需安装 Go 1.21+
-cd apps/runner-go
+cd apps/runner
 go mod tidy
 go build -o runner .
 # 从仓库根目录运行（保证 SQLITE_PATH/ARTIFACTS_DIR 相对路径正确）
 SQLITE_PATH=./data/bullboard.db ARTIFACTS_DIR=./artifacts API_BASE_URL=http://localhost:3000 ./runner
 ```
 
-或从仓库根：`cd bull-board && SQLITE_PATH=./data/bullboard.db ./apps/runner-go/runner`
+或从仓库根：`cd bull-board && SQLITE_PATH=./data/bullboard.db ./apps/runner/runner`
 
 ## 验证步骤
 

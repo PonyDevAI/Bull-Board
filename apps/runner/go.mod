@@ -1,4 +1,4 @@
-module bull-board/runner-go
+module bull-board/runner
 
 go 1.21
 

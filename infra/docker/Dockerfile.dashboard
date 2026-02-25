@@ -4,14 +4,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY apps/web/package.json apps/web/package-lock.json* ./
+COPY apps/dashboard/package.json apps/dashboard/package-lock.json* ./
 RUN npm ci 2>/dev/null || npm install
 
-COPY apps/web/tsconfig.json apps/web/tsconfig.node.json apps/web/vite.config.ts ./
-COPY apps/web/index.html ./
-COPY apps/web/postcss.config.js apps/web/tailwind.config.js ./
-COPY apps/web/src ./src
-COPY apps/web/public ./public 2>/dev/null || true
+COPY apps/dashboard/tsconfig.json apps/dashboard/tsconfig.node.json apps/dashboard/vite.config.ts ./
+COPY apps/dashboard/index.html ./
+COPY apps/dashboard/postcss.config.js apps/dashboard/tailwind.config.js ./
+COPY apps/dashboard/src ./src
+COPY apps/dashboard/public ./public 2>/dev/null || true
 RUN npm run build
 
 FROM nginx:alpine

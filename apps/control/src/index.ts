@@ -9,7 +9,7 @@ import actionsRoutes from "./routes/actions.js";
 const app = Fastify({ logger: true });
 
 app.get("/health", async () => {
-  return { ok: true, service: "bull-board-api" };
+  return { ok: true, service: "bull-board-control" };
 });
 
 await app.register(workspacesRoutes);

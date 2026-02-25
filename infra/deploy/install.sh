@@ -51,25 +51,25 @@ install_from_repo() {
   local dest_control="$PREFIX/releases/$VERSION/control"
   local dest_worker="$PREFIX/releases/$VERSION/worker"
   mkdir -p "$dest_control" "$dest_worker"
-  # control: api dist + migrations + package.json
-  if [ -d "$REPO_ROOT/apps/api/dist" ]; then
-    cp -r "$REPO_ROOT/apps/api/dist" "$REPO_ROOT/apps/api/migrations" "$REPO_ROOT/apps/api/package.json" "$dest_control/"
-    [ -d "$REPO_ROOT/apps/api/node_modules" ] && cp -r "$REPO_ROOT/apps/api/node_modules" "$dest_control/" || true
+  # control: dist + migrations + package.json
+  if [ -d "$REPO_ROOT/apps/control/dist" ]; then
+    cp -r "$REPO_ROOT/apps/control/dist" "$REPO_ROOT/apps/control/migrations" "$REPO_ROOT/apps/control/package.json" "$dest_control/"
+    [ -d "$REPO_ROOT/apps/control/node_modules" ] && cp -r "$REPO_ROOT/apps/control/node_modules" "$dest_control/" || true
   else
-    echo "请先构建 control: pnpm build:api"
+    echo "请先构建 control: pnpm build:control"
     return 1
   fi
   # dashboard 静态：nginx 会配 root；若 release 包内含 dashboard 子目录则放这里
-  if [ -d "$REPO_ROOT/apps/web/dist" ]; then
+  if [ -d "$REPO_ROOT/apps/dashboard/dist" ]; then
     mkdir -p "$dest_control/dashboard"
-    cp -r "$REPO_ROOT/apps/web/dist/"* "$dest_control/dashboard/"
+    cp -r "$REPO_ROOT/apps/dashboard/dist/"* "$dest_control/dashboard/"
   fi
   # worker: runner 二进制
-  if [ -f "$REPO_ROOT/apps/runner-go/runner" ]; then
-    cp "$REPO_ROOT/apps/runner-go/runner" "$dest_worker/"
+  if [ -f "$REPO_ROOT/apps/runner/runner" ]; then
+    cp "$REPO_ROOT/apps/runner/runner" "$dest_worker/"
     chmod +x "$dest_worker/runner"
-  elif command -v go >/dev/null 2>&1 && [ -f "$REPO_ROOT/apps/runner-go/main.go" ]; then
-    (cd "$REPO_ROOT/apps/runner-go" && go build -o runner) && cp "$REPO_ROOT/apps/runner-go/runner" "$dest_worker/" && chmod +x "$dest_worker/runner"
+  elif command -v go >/dev/null 2>&1 && [ -f "$REPO_ROOT/apps/runner/main.go" ]; then
+    (cd "$REPO_ROOT/apps/runner" && go build -o runner) && cp "$REPO_ROOT/apps/runner/runner" "$dest_worker/" && chmod +x "$dest_worker/runner"
   else
     echo "请先构建 runner 或安装 Go 后重试"
     return 1

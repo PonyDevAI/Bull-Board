@@ -2,10 +2,10 @@
 
 ## 修改文件清单
 
-- `apps/api/src/routes/actions.ts` - POST /api/tasks/:id/actions/submit、replan、retry、continue-fix
-- `apps/api/src/index.ts` - 注册 actionsRoutes
-- `apps/web/src/api.ts` - actionSubmit、actionReplan、actionRetry、actionContinueFix
-- `apps/web/src/pages/TaskDetail.tsx` - Done/Failed 时展示 Actions 按钮并调用上述 API
+- `apps/control/src/routes/actions.ts` - POST /api/tasks/:id/actions/submit、replan、retry、continue-fix
+- `apps/control/src/index.ts` - 注册 actionsRoutes
+- `apps/dashboard/src/api.ts` - actionSubmit、actionReplan、actionRetry、actionContinueFix
+- `apps/dashboard/src/pages/TaskDetail.tsx` - Done/Failed 时展示 Actions 按钮并调用上述 API
 
 ## 启动命令
 
