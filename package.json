@@ -6,6 +6,7 @@
     "dev": "pnpm dev:control & pnpm dev:dashboard",
     "dev:control": "pnpm --filter @bullboard/control dev",
     "dev:dashboard": "pnpm --filter @bullboard/dashboard dev",
+    "build": "pnpm build:control && pnpm build:dashboard",
     "build:control": "pnpm --filter @bullboard/control build",
     "build:dashboard": "pnpm --filter @bullboard/dashboard build"
   },

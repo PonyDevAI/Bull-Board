@@ -1,5 +1,4 @@
-# PR-D3: 打 tag v*.*.* 时自动发布 release 资源并推送 Docker 到 GHCR
-# 对外命名: dashboard / control / runner
+# PR-08: tag v*.*.* 触发，全 Go 构建 all/runner (linux amd64/arm64)，上传 release + SHA256SUMS
 
 name: Release
 
@@ -7,9 +6,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-
-env:
-  REGISTRY: ghcr.io
 
 jobs:
   release-assets:
@@ -38,55 +34,70 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build control
-        run: pnpm build:control
-
-      - name: Build dashboard
-        run: pnpm build:dashboard
-
-      - name: Pack control tarball
+      - name: Build dashboard (static only)
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          mkdir -p release/control release/worker
-          cp -r apps/control/dist apps/control/migrations apps/control/package.json release/control/
-          (cd release/control && npm install --omit=dev)
-          mkdir -p release/control/dashboard
-          cp -r apps/dashboard/dist/* release/control/dashboard/
-          tar -czvf "bullboard-control-linux-amd64-${VERSION}.tar.gz" -C release control
-          mv "bullboard-control-linux-amd64-${VERSION}.tar.gz" release/
+          pnpm install --frozen-lockfile
+          pnpm build:dashboard
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
 
-      - name: Build runner
-        working-directory: apps/runner
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o runner .
+      - name: Build bb and bb-runner linux amd64
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bb-amd64 ./cmd/bb
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bb-runner-amd64 ./cmd/bb-runner
 
-      - name: Pack worker tarball
+      - name: Build bb and bb-runner linux arm64
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bb-arm64 ./cmd/bb
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bb-runner-arm64 ./cmd/bb-runner
+
+      - name: Pack bullboard-all-linux-amd64
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          mkdir -p release/worker
-          cp apps/runner/runner release/worker/
-          tar -czvf "bullboard-worker-linux-amd64-${VERSION}.tar.gz" -C release worker
-          mv "bullboard-worker-linux-amd64-${VERSION}.tar.gz" release/
+          mkdir -p release/all-amd64/dashboard
+          cp bb-amd64 release/all-amd64/bb
+          cp bb-runner-amd64 release/all-amd64/bb-runner
+          cp -r apps/dashboard/dist release/all-amd64/dashboard/
+          chmod +x release/all-amd64/bb release/all-amd64/bb-runner
+          tar -czvf "release/bullboard-all-linux-amd64-${VERSION}.tar.gz" -C release/all-amd64 bb bb-runner dashboard
+
+      - name: Pack bullboard-all-linux-arm64
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p release/all-arm64/dashboard
+          cp bb-arm64 release/all-arm64/bb
+          cp bb-runner-arm64 release/all-arm64/bb-runner
+          cp -r apps/dashboard/dist release/all-arm64/dashboard/
+          chmod +x release/all-arm64/bb release/all-arm64/bb-runner
+          tar -czvf "release/bullboard-all-linux-arm64-${VERSION}.tar.gz" -C release/all-arm64 bb bb-runner dashboard
+
+      - name: Pack runner-only tarballs
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p release/runner-amd64 release/runner-arm64
+          cp bb-runner-amd64 release/runner-amd64/bb-runner
+          cp bb-runner-arm64 release/runner-arm64/bb-runner
+          chmod +x release/runner-amd64/bb-runner release/runner-arm64/bb-runner
+          tar -czvf "release/bullboard-runner-linux-amd64-${VERSION}.tar.gz" -C release/runner-amd64 bb-runner
+          tar -czvf "release/bullboard-runner-linux-arm64-${VERSION}.tar.gz" -C release/runner-arm64 bb-runner
 
       - name: Generate SHA256SUMS
         run: |
           cd release
-          sha256sum bullboard-control-linux-amd64-*.tar.gz bullboard-worker-linux-amd64-*.tar.gz > SHA256SUMS
+          sha256sum bullboard-all-linux-amd64-*.tar.gz bullboard-all-linux-arm64-*.tar.gz bullboard-runner-linux-amd64-*.tar.gz bullboard-runner-linux-arm64-*.tar.gz > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create Release & Upload assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/bullboard-control-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
-            release/bullboard-worker-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+            release/bullboard-all-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+            release/bullboard-all-linux-arm64-${{ steps.version.outputs.version }}.tar.gz
+            release/bullboard-runner-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+            release/bullboard-runner-linux-arm64-${{ steps.version.outputs.version }}.tar.gz
             release/SHA256SUMS
           generate_release_notes: true
         env:
@@ -106,7 +117,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set registry owner (lowercase for GHCR)
+      - name: Set registry owner
         run: echo "REGISTRY_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
@@ -115,7 +126,7 @@ jobs:
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -123,7 +134,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REGISTRY_OWNER }}/bullboard-${{ matrix.image }}
+          images: ghcr.io/${{ env.REGISTRY_OWNER }}/bullboard-${{ matrix.image }}
           tags: |
             type=ref,event=tag,prefix=
             type=raw,value=latest

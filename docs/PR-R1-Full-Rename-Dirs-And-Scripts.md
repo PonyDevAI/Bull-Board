@@ -1,6 +1,6 @@
 # PR-R1：目录与工程脚本全量重命名
 
-本 PR 将 `apps/api` → `apps/control`、`apps/web` → `apps/dashboard`、`apps/runner-go` → `apps/runner`，并更新所有引用（workspace、package 名、脚本、CI、infra、文档），确保 **pnpm dev / build 可跑**。业务逻辑不变。
+本 PR 将源码目录统一为 apps/control、apps/dashboard、apps/runner，并更新所有引用（workspace、package 名、脚本、CI、infra、文档），确保 **pnpm dev / build 可跑**。业务逻辑不变。
 
 ---
 
@@ -8,11 +8,11 @@
 
 ### A. 目录重命名（git mv）
 
-| 原路径 | 新路径 |
-|--------|--------|
-| `apps/api` | `apps/control` |
-| `apps/web` | `apps/dashboard` |
-| `apps/runner-go` | `apps/runner` |
+| 原路径（已废弃） | 新路径 |
+|------------------|--------|
+| 根下 api 目录 | `apps/control` |
+| 根下 web 目录 | `apps/dashboard` |
+| 根下 runner-go 目录 | `apps/runner` |
 
 ### B. 根与 app package.json、脚本
 
@@ -32,11 +32,11 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `.github/workflows/release.yml` | 所有 `apps/api`→`apps/control`，`apps/web`→`apps/dashboard`，`apps/runner-go`→`apps/runner`；`pnpm build:api`→`build:control`，`build:web`→`build:dashboard`；step 名称去掉 (API)/(Web) |
-| `infra/deploy/install.sh` | `install_from_repo` 内路径与 `pnpm build:control` 提示 |
-| `infra/docker/Dockerfile.control` | `COPY apps/api/...` → `COPY apps/control/...` |
-| `infra/docker/Dockerfile.dashboard` | `COPY apps/web/...` → `COPY apps/dashboard/...` |
-| `infra/docker/Dockerfile.runner` | `COPY apps/runner-go/` → `COPY apps/runner/` |
+| `.github/workflows/release.yml` | 路径与脚本名使用 control/dashboard/runner；build 步骤为 build:control、build:dashboard |
+| `infra/deploy/install.sh` | `install_from_repo` 内路径与 pnpm build:control 提示 |
+| `infra/docker/Dockerfile.control` | COPY apps/control/... |
+| `infra/docker/Dockerfile.dashboard` | COPY apps/dashboard/... |
+| `infra/docker/Dockerfile.runner` | COPY apps/runner/ |
 
 ### E. 文档
 
@@ -46,7 +46,7 @@
 | `docs/DEPLOY.md` | 源码目录说明、build 脚本名 |
 | `docs/NAMING.md` | 表中源码目录列 |
 | `docs/PLAN.md` | 目录结构（若仍为 api/web/runner-go 则改为 control/dashboard/runner） |
-| `docs/PR-01-Scaffold.md` ~ `docs/PR-D1-Deploy-Templates.md` | 所有 `apps/api`→`apps/control`，`apps/web`→`apps/dashboard`，`apps/runner-go`→`apps/runner`；`pnpm dev:api`→`dev:control` 等 |
+| `docs/PR-01-Scaffold.md` ~ `docs/PR-D1-Deploy-Templates.md` | 路径与脚本统一为 control/dashboard/runner；dev/build 为 dev:control、dev:dashboard、build:control、build:dashboard |
 
 ---
 

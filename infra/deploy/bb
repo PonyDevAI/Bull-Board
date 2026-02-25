@@ -1,0 +1,260 @@
+#!/usr/bin/env bash
+# bb CLI - Bull Board 管理命令（宝塔风格）
+# 默认 prefix=/opt/bull-board, port=6666
+# 用法: bb <command> [options]
+
+set -e
+
+PREFIX="${BB_PREFIX:-/opt/bull-board}"
+PORT="${BB_PORT:-6666}"
+SVC_CONTROL="bb"
+SVC_RUNNER="bb-runner"
+
+usage() {
+  echo "bb - Bull Board 管理命令"
+  echo ""
+  echo "用法: bb <command> [options]"
+  echo ""
+  echo "命令:"
+  echo "  install [all|control|runner]  安装（默认 all）"
+  echo "  upgrade [all|control|runner]  升级"
+  echo "  uninstall [all|control|runner] 卸载（默认保留 data，可用 --purge-data）"
+  echo "  status                        服务状态"
+  echo "  logs [control|runner] [-f] [--lines N]  查看日志"
+  echo "  restart [control|runner|all]  重启服务"
+  echo "  doctor                        环境检查"
+  echo "  tls enable --self-signed      启用 TLS（自签证书）"
+  echo "  tls enable --cert <path> --key <path>  启用 TLS（自定义证书）"
+  echo "  tls disable                   关闭 TLS"
+  echo ""
+  echo "选项（install/upgrade/uninstall）:"
+  echo "  --mode local|docker  部署模式（默认 local）"
+  echo "  --version latest|vX.Y.Z  版本（默认 latest）"
+  echo "  --prefix <dir>  安装前缀（默认 /opt/bull-board）"
+  echo "  --port <port>   端口（默认 6666，仅 control）"
+  echo "  --purge-data    仅 uninstall：同时删除 data 目录"
+  echo ""
+  echo "环境变量: BB_PREFIX, BB_PORT"
+  exit 1
+}
+
+# 解析全局选项（--prefix 等），剩余参数放入 BB_ARGS
+parse_global_opts() {
+  BB_ARGS=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --prefix) PREFIX="$2"; shift 2 ;;
+      --port)   PORT="$2"; shift 2 ;;
+      *)        BB_ARGS+=("$1"); shift ;;
+    esac
+  done
+}
+
+cmd_doctor() {
+  echo "=== bb doctor ==="
+  echo "PREFIX: $PREFIX"
+  echo "PORT:   $PORT"
+  if [ -L "$PREFIX/current" ]; then
+    local target; target="$(readlink -f "$PREFIX/current" 2>/dev/null || readlink "$PREFIX/current")"
+    echo "current -> $target"
+  else
+    echo "current: 未安装或非符号链接"
+  fi
+  echo "---"
+  if command -v node >/dev/null 2>&1; then
+    echo "node: $(node -v)"
+  else
+    echo "node: 未安装"
+  fi
+  if [ "$(uname -s)" = "Linux" ]; then
+    echo "systemd: $(systemctl --version 2>/dev/null | head -1 || echo '不可用')"
+    systemctl is-active "$SVC_CONTROL" 2>/dev/null && echo "bb.service: active" || echo "bb.service: inactive/未安装"
+    systemctl is-active "$SVC_RUNNER" 2>/dev/null && echo "bb-runner.service: active" || echo "bb-runner.service: inactive/未安装"
+  fi
+  if curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/api/health" 2>/dev/null | grep -q 200; then
+    echo "API ($PORT): OK"
+  else
+    echo "API ($PORT): 未响应"
+  fi
+}
+
+cmd_status() {
+  parse_global_opts "$@"
+  echo "=== bb status ==="
+  echo "PREFIX: $PREFIX"
+  if [ -L "$PREFIX/current" ]; then
+    local v; v="$(basename "$(readlink "$PREFIX/current")")"
+    echo "Version: $v"
+  else
+    echo "Version: 未安装"
+  fi
+  echo ""
+  if [ "$(uname -s)" = "Linux" ]; then
+    echo "Services:"
+    for s in $SVC_CONTROL $SVC_RUNNER; do
+      local st; st="$(systemctl is-active "$s" 2>/dev/null)" || st="inactive"
+      echo "  $s: $st"
+    done
+  fi
+  echo ""
+  local proto="http"
+  [ -f "$PREFIX/config/bb.json" ] && grep -q '"tls"' "$PREFIX/config/bb.json" 2>/dev/null && proto="https"
+  echo "Panel: ${proto}://$(hostname -f 2>/dev/null || echo localhost):$PORT"
+}
+
+cmd_logs() {
+  parse_global_opts "$@"
+  local which="control"
+  local follow=""
+  local lines="100"
+  for a in "${BB_ARGS[@]}"; do
+    case "$a" in
+      control|runner) which="$a" ;;
+      -f) follow="-f" ;;
+      --lines) lines="${BB_ARGS[*]:1}"; shift ;;  # 简化：不解析 --lines N，用默认
+    esac
+  done
+  if [ "$(uname -s)" != "Linux" ]; then
+    echo "logs 仅支持 Linux (journalctl)"
+    exit 1
+  fi
+  local unit="$SVC_CONTROL"
+  [ "$which" = "runner" ] && unit="$SVC_RUNNER"
+  journalctl -u "$unit" ${follow} -n "$lines" --no-pager
+}
+
+cmd_restart() {
+  parse_global_opts "$@"
+  local which="${BB_ARGS[0]:-all}"
+  if [ "$(uname -s)" != "Linux" ]; then
+    echo "restart 仅支持 Linux (systemctl)"
+    exit 1
+  fi
+  if [ "$which" = "all" ]; then
+    systemctl restart "$SVC_CONTROL" "$SVC_RUNNER" 2>/dev/null || true
+    echo "已重启 bb + bb-runner"
+  elif [ "$which" = "control" ]; then
+    systemctl restart "$SVC_CONTROL"
+    echo "已重启 bb"
+  elif [ "$which" = "runner" ]; then
+    systemctl restart "$SVC_RUNNER"
+    echo "已重启 bb-runner"
+  else
+    echo "用法: bb restart [control|runner|all]"
+    exit 1
+  fi
+}
+
+cmd_tls() {
+  parse_global_opts "$@"
+  local sub="${BB_ARGS[0]:-}"
+  local config="$PREFIX/config/bb.json"
+  mkdir -p "$PREFIX/config"
+  if [ "$sub" = "disable" ]; then
+    echo '{"tls":{"enabled":false}}' > "$config"
+    echo "已关闭 TLS。请执行: bb restart control"
+    return
+  fi
+  if [ "$sub" != "enable" ]; then
+    echo "用法: bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls disable"
+    exit 1
+  fi
+  local self_signed=false cert_path="" key_path=""
+  local i=1
+  while [ $i -lt ${#BB_ARGS[@]} ]; do
+    case "${BB_ARGS[$i]}" in
+      --self-signed) self_signed=true ;;
+      --cert) cert_path="${BB_ARGS[$i+1]}"; i=$((i+1)) ;;
+      --key)  key_path="${BB_ARGS[$i+1]}"; i=$((i+1)) ;;
+    esac
+    i=$((i+1))
+  done
+  if [ "$self_signed" = "true" ]; then
+    local cert="$PREFIX/config/bb-cert.pem" key="$PREFIX/config/bb-key.pem"
+    if ! command -v openssl >/dev/null 2>&1; then
+      echo "需要 openssl 生成自签证书"
+      exit 1
+    fi
+    openssl req -x509 -newkey rsa:2048 -keyout "$key" -out "$cert" -days 365 -nodes -subj "/CN=bb"
+    echo "{\"tls\":{\"enabled\":true,\"mode\":\"self-signed\",\"certPath\":\"$cert\",\"keyPath\":\"$key\"}}" > "$config"
+    echo "已启用 TLS（自签）。请执行: bb restart control"
+  elif [ -n "$cert_path" ] && [ -n "$key_path" ]; then
+    echo "{\"tls\":{\"enabled\":true,\"mode\":\"custom\",\"certPath\":\"$cert_path\",\"keyPath\":\"$key_path\"}}" > "$config"
+    echo "已启用 TLS（自定义证书）。请执行: bb restart control"
+  else
+    echo "用法: bb tls enable --self-signed | bb tls enable --cert <path> --key <path>"
+    exit 1
+  fi
+}
+
+# 查找 install.sh：先与 bb 同目录，再 PREFIX/bin/install.sh
+find_install_sh() {
+  local bb_path; bb_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  [ -f "$bb_path/install.sh" ] && echo "$bb_path/install.sh" && return
+  [ -f "$PREFIX/bin/install.sh" ] && echo "$PREFIX/bin/install.sh" && return
+  return 1
+}
+
+cmd_install() {
+  parse_global_opts "$@"
+  local component="${BB_ARGS[0]:-all}"
+  local install_sh; install_sh="$(find_install_sh)" || true
+  if [ -n "$install_sh" ]; then
+    export PREFIX MODE="${MODE:-local}" VERSION="${VERSION:-latest}" PORT
+    export COMPONENT="$component"
+    bash "$install_sh" install --mode "${MODE:-local}" --prefix "$PREFIX" --port "$PORT" --component "$component" --version "${VERSION:-latest}" --from-repo
+  else
+    echo "请使用: curl -fsSL <INSTALL_URL> | bash"
+    echo "或从仓库运行: infra/deploy/install.sh install --from-repo --prefix $PREFIX"
+    exit 1
+  fi
+}
+
+cmd_upgrade() {
+  parse_global_opts "$@"
+  local component="${BB_ARGS[0]:-all}"
+  local install_sh; install_sh="$(find_install_sh)" || true
+  if [ -n "$install_sh" ]; then
+    export PREFIX MODE="${MODE:-local}" VERSION="${VERSION:-latest}" PORT
+    export COMPONENT="$component"
+    bash "$install_sh" upgrade --mode "${MODE:-local}" --prefix "$PREFIX" --component "$component" --version "${VERSION:-latest}" --from-repo
+  else
+    echo "请使用: curl -fsSL <INSTALL_URL> | bash -s upgrade"
+    exit 1
+  fi
+}
+
+cmd_uninstall() {
+  parse_global_opts "$@"
+  local purge=""
+  for a in "${BB_ARGS[@]}"; do [ "$a" = "--purge-data" ] && purge="--purge-data"; done
+  local install_sh; install_sh="$(find_install_sh)" || true
+  if [ -n "$install_sh" ]; then
+    export PREFIX
+    [ -n "$purge" ] && export PURGE_DATA=true
+    bash "$install_sh" uninstall $purge --prefix "$PREFIX"
+  else
+    echo "请从仓库运行: infra/deploy/install.sh uninstall $purge --prefix $PREFIX"
+    exit 1
+  fi
+}
+
+# Main
+COMMAND="${1:-}"
+shift || true
+# 解析顶层 --prefix / --port
+parse_global_opts "$@"
+set -- "${BB_ARGS[@]}"
+
+case "$COMMAND" in
+  install)   cmd_install "$@" ;;
+  upgrade)  cmd_upgrade "$@" ;;
+  uninstall) cmd_uninstall "$@" ;;
+  status)   cmd_status "$@" ;;
+  logs)     cmd_logs "$@" ;;
+  restart)  cmd_restart "$@" ;;
+  doctor)   cmd_doctor "$@" ;;
+  tls)      cmd_tls "$@" ;;
+  ""|help|--help|-h) usage ;;
+  *) echo "未知命令: $COMMAND"; usage ;;
+esac

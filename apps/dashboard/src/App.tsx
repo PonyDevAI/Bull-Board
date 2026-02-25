@@ -1,9 +1,13 @@
-import { Routes, Route, Link, useLocation } from "react-router-dom";
+import { Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getWorkspaces, type Workspace } from "@/api";
 import { Workspaces } from "@/pages/Workspaces";
 import { Board } from "@/pages/Board";
 import { TaskDetail } from "@/pages/TaskDetail";
+import { AppShell } from "@/components/layout/AppShell";
+import { DashboardHome } from "@/pages/DashboardHome";
+import { KanbanPage } from "@/pages/KanbanPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 
 function Home() {
   return (
@@ -93,10 +97,10 @@ function Sidebar({
       </nav>
       <div className="mt-4 flex flex-1 flex-col overflow-auto border-t border-slate-100 p-3">
         <p className="mb-2 px-1 text-xs font-medium text-slate-500">客户端列表</p>
-        {workspaces.length === 0 ? (
+        {(workspaces ?? []).length === 0 ? (
           <p className="px-1 text-xs text-slate-400">暂无 Workspace</p>
         ) : (
-          workspaces.map((w) => (
+          (workspaces ?? []).map((w) => (
             <Link
               key={w.id}
               to={"/board?workspace_id=" + w.id}
@@ -132,6 +136,7 @@ function Sidebar({
 }
 
 export default function App() {
+  const location = useLocation();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -149,6 +154,38 @@ export default function App() {
   }, []);
 
   const showDrawer = isMobile && sidebarOpen;
+
+  // Dashboard 全 mock：/dashboard 与 /kanban 使用 AppShell + 新 Sidebar（分组菜单、折叠、badge、Workspace 切换）
+  if (
+    location.pathname === "/" ||
+    location.pathname.startsWith("/dashboard") ||
+    location.pathname === "/kanban"
+  ) {
+    return (
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<AppShell />}>
+          <Route index element={<DashboardHome />} />
+          <Route path="tasks" element={<div className="text-muted-foreground p-4">Tasks 占位</div>} />
+          <Route path="backlog" element={<div className="text-muted-foreground p-4">Backlog 占位</div>} />
+          <Route path="runs" element={<div className="text-muted-foreground p-4">Runs 占位</div>} />
+          <Route path="runners" element={<div className="text-muted-foreground p-4">Runners 占位</div>} />
+          <Route path="workspaces" element={<div className="text-muted-foreground p-4">Workspaces 占位</div>} />
+          <Route path="artifacts" element={<div className="text-muted-foreground p-4">Artifacts 占位</div>} />
+          <Route path="models" element={<div className="text-muted-foreground p-4">Models 占位</div>} />
+          <Route path="roles" element={<div className="text-muted-foreground p-4">Roles & Routing 占位</div>} />
+          <Route path="policies" element={<div className="text-muted-foreground p-4">Policies 占位</div>} />
+          <Route path="logs" element={<div className="text-muted-foreground p-4">Logs 占位</div>} />
+          <Route path="audit" element={<div className="text-muted-foreground p-4">Audit 占位</div>} />
+          <Route path="alerts" element={<div className="text-muted-foreground p-4">Alerts 占位</div>} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route path="/kanban" element={<AppShell />}>
+          <Route index element={<KanbanPage />} />
+        </Route>
+      </Routes>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-white">

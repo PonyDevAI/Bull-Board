@@ -1,68 +1,63 @@
-# Bull Board
+# Bull Board（bb）
 
-Web 看板控制台 v0.1：管理改代码任务，通过 SQLite 队列表派发给 Go 执行器（runner）执行。无 Postgres/Redis 依赖。
+Web 看板：管理改代码任务，通过 SQLite 队列表派发给 bb-runner 执行。无 Postgres/Redis 依赖，目标机器无需 Node/Go 运行时（仅需二进制）。
 
-## 对外命名（部署与文档统一）
-
-| 对外名称 | 说明 | 源码目录 |
-|----------|------|----------|
-| **dashboard** | 前端（Vite + React + Tailwind + shadcn/ui） | `apps/dashboard` |
-| **control** | Control Plane（Fastify API + 状态机 + SQLite + SSE） | `apps/control` |
-| **runner** | Go 执行器（领 job、git worktree、artifacts、回调 control） | `apps/runner` |
-
-部署工件与文档一律使用 **dashboard / control / runner**；源码目录为 `apps/dashboard`、`apps/control`、`apps/runner`。
-
-## 技术栈
-
-- **Control**: Fastify + TypeScript + SQLite + SSE
-- **队列**: SQLite `jobs` 表（原子领取 + 租约锁）
-- **Runner**: Go 常驻进程，从 SQLite 领任务并执行（git worktree + artifacts）
-- **Dashboard**: Vite + React + TypeScript + TailwindCSS + shadcn/ui
-
-## 目录结构
-
-```
-bull-board/
-  apps/control/       # Control Plane 源码（对外名 control）
-  apps/dashboard/     # Dashboard 源码（对外名 dashboard）
-  apps/runner/        # Runner 源码（对外名 runner）
-  packages/shared/   # 共享类型/常量
-  docs/PLAN.md       # 方案文档
-  data/              # SQLite 文件目录（bullboard.db）
-  artifacts/         # Runner 产出（diff/log/report）
-```
-
-## 启动命令（PR-01）
+## 一条命令安装
 
 ```bash
-# 安装依赖
-pnpm install
-
-# 启动 control（终端 1）
-pnpm dev:control
-
-# 启动 dashboard（终端 2）
-pnpm dev:dashboard
+curl -fsSL https://raw.githubusercontent.com/trustpoker/bull-borad/main/infra/deploy/install.sh | bash
 ```
 
-或一次启动两者（后台 + 前台）：`pnpm dev`（control 后台，dashboard 前台）。
+默认：本机（local）模式、全部组件、最新版本、前缀 `/opt/bull-board`、端口 **6666**。安装完成后访问：
 
-## 验证步骤（PR-01）
+- **Panel**：http://your-host:6666
 
-1. **Control 健康检查**  
-   `curl -s http://localhost:3000/health`  
-   期望：`{"ok":true,"service":"bull-board-control"}`
+## 使用 bb 命令
 
-2. **Dashboard**  
-   浏览器打开 http://localhost:5173，应看到 Bull Board 欢迎页。
+安装后 **bb**（`/usr/local/bin/bb`）用于运行期管理（安装/升级/卸载由上述 install.sh 负责）：
 
-## 端到端验证（v0.1 闭环）
+```bash
+bb server            # 启动服务（systemd 下由 bb.service 调用）
+bb status            # 服务状态与 Panel 地址
+bb logs [control|runner] [-f] [--lines N]
+bb restart [control|runner|all]
+bb doctor
+bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls disable | bb tls status
+```
 
-1. 启动 **control**（从仓库根）：`SQLITE_PATH=./data/bullboard.db node apps/control/dist/index.js`
-2. 启动 **dashboard**：`pnpm dev:dashboard`
-3. 可选启动 **runner**：`cd apps/runner && go build -o runner && SQLITE_PATH=../../data/bullboard.db API_BASE_URL=http://localhost:3000 ./runner`
-4. 在 **dashboard**：Workspaces → 新增（repo_path 为本地 git 仓库）→ 看板 → 新建 Task → 入队 VERIFY（或 curl POST /api/tasks/:id/enqueue）→ **runner** 执行后 task 变为 Done → 详情页点击 Submit 完成闭环。
+完整命令见 [docs/CLI_SPEC.md](docs/CLI_SPEC.md)。
 
-## 方案详情
+## 部署与目录
 
-见 [docs/PLAN.md](docs/PLAN.md)。各 PR 说明见 [docs/PR-01-Scaffold.md](docs/PR-01-Scaffold.md) ～ [docs/PR-06-Actions.md](docs/PR-06-Actions.md)。
+- **local**：systemd 服务 `bb.service`（单端口 6666：面板 + API + SSE）与 `bb-runner.service`。
+- **目录**：`/opt/bull-board/` 下 `current`、`versions/<version>`、`config/`、`data/`（持久化）。
+- 详细说明见 [docs/DEPLOY.md](docs/DEPLOY.md)。
+
+## 开发
+
+- **Go**：`go build -o bb ./cmd/bb`、`go build -o bb-runner ./cmd/bb-runner`；`go test ./...`
+- **前端（仅构建静态产物）**：`pnpm install && pnpm build:dashboard`，产出供 bb server 托管。
+- 本地起服务：`./bb server --prefix /tmp/bb-test`，访问 http://localhost:6666
+
+### 本地开发（热重载）
+
+使用 [Air](https://github.com/air-verse/air) 对 Go 做热重载，前端用 Vite 自带 HMR。需先安装 Air：`go install github.com/air-verse/air@latest` 或 `brew install cosmtrek/tap/air`。
+
+开三个终端（若本机另有名为 `air` 的程序如 R 的 Air，请用 `~/go/bin/air` 避免冲突）：
+
+1. **bb server**（API + 静态托管，端口 6666）  
+   ```bash
+   ~/go/bin/air
+   ```
+2. **bb-runner**（与 control 通信，需与 server 使用相同数据目录）  
+   ```bash
+   ~/go/bin/air -c .air.runner.toml
+   ```
+3. **前端**（Vite 开发服务器，端口 5173）  
+   ```bash
+   cd apps/dashboard && pnpm dev
+   ```
+
+前端开发时把 `apps/dashboard/vite.config.ts` 里 proxy 目标改为 `http://localhost:6666`（若当前指向 3000 的 Node control，需改一次）。访问 http://localhost:5173 即可；改 Go 代码会由 Air 自动重新编译并重启，改前端代码由 Vite HMR 热更新。
+
+方案与 PR 说明见 [docs/PLAN.md](docs/PLAN.md) 及 `docs/PR-*.md`。

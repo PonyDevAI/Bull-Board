@@ -24,7 +24,10 @@ export function Board() {
   const load = () => {
     const q: { workspace_id?: string } = {};
     if (workspaceId) q.workspace_id = workspaceId;
-    getTasks(q).then(setTasks).finally(() => setLoading(false));
+    getTasks(q)
+      .then((data) => setTasks(Array.isArray(data) ? data : []))
+      .catch(() => setTasks([]))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -32,7 +35,9 @@ export function Board() {
   }, [workspaceId]);
 
   useEffect(() => {
-    getWorkspaces().then(setWorkspaces);
+    getWorkspaces()
+      .then((data) => setWorkspaces(Array.isArray(data) ? data : []))
+      .catch(() => setWorkspaces([]));
   }, []);
 
   useSSE(() => load(), () => load());
@@ -48,7 +53,7 @@ export function Board() {
   };
 
   const tasksForColumn = (statuses: readonly string[]) =>
-    tasks.filter((t) => statuses.includes(t.status));
+    (tasks ?? []).filter((t) => statuses.includes(t.status));
 
   return (
     <div className="space-y-4">
@@ -105,7 +110,7 @@ export function Board() {
               required
             >
               <option value="">选择 Workspace</option>
-              {workspaces.map((w) => (
+              {(workspaces ?? []).map((w) => (
                 <option key={w.id} value={w.id}>{w.name}</option>
               ))}
             </select>
