@@ -9,3 +9,4 @@ artifacts/*
 !artifacts/.gitkeep
 data/*.db
 !data/.gitkeep
+apps/control/data/
