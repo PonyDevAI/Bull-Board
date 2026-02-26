@@ -1,4 +1,10 @@
-const API = "/api";
+/** 与 control 连接：默认同源 /api；独立 control 时设 VITE_API_BASE，如 https://control.example.com */
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+const API = API_BASE + "/api";
+
+export function getApiBase(): string {
+  return API_BASE || "";
+}
 
 export type Workspace = {
   id: string;

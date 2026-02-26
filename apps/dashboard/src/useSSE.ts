@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { getApiBase } from "@/api";
 
 type EventHandler = (data: unknown) => void;
 
@@ -9,7 +10,8 @@ export function useSSE(onTaskChanged?: EventHandler, onRunChanged?: EventHandler
   onRunRef.current = onRunChanged;
 
   useEffect(() => {
-    const url = "/api/events";
+    const base = getApiBase();
+    const url = base ? `${base}/api/events` : "/api/events";
     const es = new EventSource(url);
     es.onmessage = (e) => {
       if (e.data && e.data.startsWith("{")) {
