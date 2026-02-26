@@ -12,13 +12,13 @@ import { SettingsPage } from "@/pages/SettingsPage";
 function Home() {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-800">大脑指挥室</h2>
-      <p className="text-slate-600">Bull Board 看板控制台 v0.1</p>
+      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">大脑指挥室</h2>
+      <p className="text-slate-600 dark:text-slate-400">Bull Board 看板控制台 v0.1</p>
       <div className="flex flex-wrap gap-2">
-        <Link to="/board" className="min-h-[44px] min-w-[44px] rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600">
+        <Link to="/board" className="min-h-[44px] min-w-[44px] rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500">
           任务中心
         </Link>
-        <Link to="/workspaces" className="min-h-[44px] min-w-[44px] rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <Link to="/workspaces" className="min-h-[44px] min-w-[44px] rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
           数据管理
         </Link>
       </div>
@@ -48,16 +48,16 @@ function Sidebar({
 
   const content = (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 p-4">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 p-4 dark:border-slate-700">
         <span className="flex items-center gap-2">
-          <span className="text-lg text-slate-400">⚙</span>
-          <span className="text-sm font-semibold text-slate-800">大脑指挥室 (Console)</span>
+          <span className="text-lg text-slate-400 dark:text-slate-500">⚙</span>
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">大脑指挥室 (Console)</span>
         </span>
         {isMobile && (
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            className="min-h-[44px] min-w-[44px] rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="关闭菜单"
           >
             ✕
@@ -71,10 +71,10 @@ function Sidebar({
             return (
               <div
                 key={to}
-                className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 min-h-[44px]"
+                className="flex cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 min-h-[44px] dark:text-slate-500"
                 title="敬请期待"
               >
-                <span className="text-slate-300">{icon === "doc" ? "📄" : "🗑"}</span>
+                <span className="text-slate-300 dark:text-slate-500">{icon === "doc" ? "📄" : "🗑"}</span>
                 <span>{label}</span>
                 <span className="ml-auto text-xs">({sub})</span>
               </div>
@@ -85,32 +85,32 @@ function Sidebar({
               key={to}
               to={to}
               className={`flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${
-                active ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
+                active ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800"
               }`}
             >
-              <span className={active ? "text-blue-500" : "text-slate-400"}>{icon === "trashcan" ? "🗑" : "📄"}</span>
+              <span className={active ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}>{icon === "trashcan" ? "🗑" : "📄"}</span>
               <span className="font-medium">{label}</span>
-              <span className="ml-auto text-xs text-slate-400">({sub})</span>
+              <span className="ml-auto text-xs text-slate-400 dark:text-slate-500">({sub})</span>
             </Link>
           );
         })}
       </nav>
-      <div className="mt-4 flex flex-1 flex-col overflow-auto border-t border-slate-100 p-3">
-        <p className="mb-2 px-1 text-xs font-medium text-slate-500">客户端列表</p>
+      <div className="mt-4 flex flex-1 flex-col overflow-auto border-t border-slate-100 p-3 dark:border-slate-700">
+        <p className="mb-2 px-1 text-xs font-medium text-slate-500 dark:text-slate-400">客户端列表</p>
         {(workspaces ?? []).length === 0 ? (
-          <p className="px-1 text-xs text-slate-400">暂无 Workspace</p>
+          <p className="px-1 text-xs text-slate-400 dark:text-slate-500">暂无 Workspace</p>
         ) : (
           (workspaces ?? []).map((w) => (
             <Link
               key={w.id}
               to={"/board?workspace_id=" + w.id}
-              className="mb-2 flex min-h-[44px] items-center justify-between rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="mb-2 flex min-h-[44px] items-center justify-between rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               <span className="flex items-center gap-2 truncate">
-                <span className="text-slate-400">🖥</span>
+                <span className="text-slate-400 dark:text-slate-500">🖥</span>
                 <span className="truncate">{w.name}</span>
               </span>
-              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
                 空闲
               </span>
             </Link>
@@ -122,14 +122,14 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <aside className="fixed inset-y-0 left-0 z-50 flex w-[min(85vw,280px)] flex-col border-r border-slate-200 bg-white shadow-xl">
+      <aside className="fixed inset-y-0 left-0 z-50 flex w-[min(85vw,280px)] flex-col border-r border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
         {content}
       </aside>
     );
   }
 
   return (
-    <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+    <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex dark:border-slate-700 dark:bg-slate-900">
       {content}
     </aside>
   );
@@ -188,7 +188,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-white dark:bg-slate-900">
       {/* 桌面侧栏 */}
       <Sidebar workspaces={workspaces} isMobile={false} />
 
@@ -209,39 +209,39 @@ export default function App() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 md:px-6">
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 md:px-6 dark:border-slate-700 dark:bg-slate-900">
           <div className="flex min-h-[44px] min-w-[44px] items-center gap-2 md:min-w-0">
             <button
               type="button"
               onClick={() => setSidebarOpen(true)}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 md:hidden dark:text-slate-400 dark:hover:bg-slate-800"
               aria-label="打开菜单"
             >
               ☰
             </button>
-            <span className="truncate text-base font-bold text-slate-900 md:text-xl">Bull Board 监控中心</span>
-            <span className="hidden text-slate-400 md:inline">🌙</span>
+            <span className="truncate text-base font-bold text-slate-900 md:text-xl dark:text-slate-100">Bull Board 监控中心</span>
+            <span className="hidden text-slate-400 dark:text-slate-500 md:inline">🌙</span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="hidden items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600 sm:flex md:px-3">
+            <div className="hidden items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600 sm:flex md:px-3 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
               <span className="truncate max-w-[120px] md:max-w-none">Bull Board (S端)</span>
-              <span className="text-slate-400">▾</span>
+              <span className="text-slate-400 dark:text-slate-500">▾</span>
             </div>
-            <button type="button" className="min-h-[44px] min-w-[44px] rounded-full p-2 text-slate-500 hover:bg-slate-100" title="刷新">
+            <button type="button" className="min-h-[44px] min-w-[44px] rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" title="刷新">
               <span className="text-lg">🔄</span>
             </button>
-            <div className="flex h-6 w-10 items-center rounded-full bg-slate-200 min-h-[44px] min-w-[44px] justify-center md:min-h-0 md:min-w-0 md:justify-start">
-              <div className="ml-1 h-4 w-4 rounded-full bg-white shadow" />
+            <div className="flex h-6 w-10 items-center rounded-full bg-slate-200 min-h-[44px] min-w-[44px] justify-center md:min-h-0 md:min-w-0 md:justify-start dark:bg-slate-700">
+              <div className="ml-1 h-4 w-4 rounded-full bg-white shadow dark:bg-slate-300" />
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-auto bg-white p-4 md:p-6">
+        <main className="flex-1 overflow-auto bg-white p-page dark:bg-slate-900">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/workspaces" element={<Workspaces />} />
             <Route path="/board" element={<Board />} />
             <Route path="/tasks/:id" element={<TaskDetail />} />
-            <Route path="/logs" element={<div className="p-4 text-slate-500">系统日志（敬请期待）</div>} />
+            <Route path="/logs" element={<div className="p-4 text-slate-500 dark:text-slate-400">系统日志（敬请期待）</div>} />
           </Routes>
         </main>
       </div>

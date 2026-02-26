@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocale, type LocaleValue } from "@/hooks/useLocale";
 
@@ -7,7 +8,7 @@ const OPTIONS: { value: LocaleValue; label: string }[] = [
   { value: "en", label: "English" },
 ];
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ compact }: { compact?: boolean } = {}) {
   const { locale, setLocale } = useLocale();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -27,17 +28,30 @@ export function LanguageSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-global-sm text-muted-foreground hover:bg-muted hover:text-foreground sm:min-w-0 sm:px-2"
+        className={cn(
+          "flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+          compact
+            ? "h-8 w-8 rounded-md"
+            : "min-h-[44px] min-w-[44px] sm:min-w-0 sm:px-2"
+        )}
         title="语言"
         aria-label="语言"
         aria-expanded={open}
       >
-        <span className="hidden text-sm sm:inline">{current?.label ?? locale}</span>
-        <span className="text-sm sm:hidden">{locale === "zh-CN" ? "中" : "En"}</span>
+        <Globe className="h-4 w-4 shrink-0" />
+        {!compact && (
+          <>
+            <span className="ml-1.5 hidden text-sm sm:inline">{current?.label ?? locale}</span>
+            <span className="ml-1.5 text-sm sm:hidden">{locale === "zh-CN" ? "中" : "En"}</span>
+          </>
+        )}
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-global border border-border bg-card py-1 shadow-card"
+          className={cn(
+            "absolute right-0 z-50 min-w-[120px] rounded-global border border-border bg-card py-1 shadow-card",
+            compact ? "bottom-full mb-1" : "top-full mt-1"
+          )}
           role="menu"
         >
           {OPTIONS.map((opt) => (

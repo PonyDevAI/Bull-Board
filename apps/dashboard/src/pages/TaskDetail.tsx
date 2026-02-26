@@ -41,7 +41,7 @@ export function TaskDetail() {
 
   if (!id) return null;
   if (loading || !task) {
-    return <p className="p-4 text-slate-500">加载中...</p>;
+    return <p className="p-4 text-slate-500 dark:text-slate-400">加载中...</p>;
   }
 
   const runs = task.runs ?? [];
@@ -49,13 +49,13 @@ export function TaskDetail() {
   const artifacts = runs.flatMap((r) => (r.artifacts ?? []).map((a) => ({ ...a, runId: r.id })));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-block">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
         <Link to="/board">
           <Button variant="outline" size="sm" className="min-h-[44px] min-w-[44px]">← 看板</Button>
         </Link>
         <h2 className="text-base font-semibold break-words md:text-lg">{task.title}</h2>
-        <span className="rounded bg-slate-200 px-2 py-1 text-sm w-fit">{task.status}</span>
+        <span className="rounded bg-slate-200 px-2 py-1 text-sm w-fit dark:bg-slate-600 dark:text-slate-200">{task.status}</span>
       </div>
 
       <Card>
@@ -96,14 +96,14 @@ export function TaskDetail() {
           {tab === "messages" && (
             <div className="space-y-2">
               {messages.length === 0 ? (
-                <p className="text-slate-500">暂无消息</p>
+                <p className="text-slate-500 dark:text-slate-400">暂无消息</p>
               ) : (
                 messages.map((m) => (
                   <div
                     key={m.id}
-                    className="rounded border bg-slate-50 p-2 text-sm"
+                    className="rounded border bg-slate-50 p-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
                   >
-                    <span className="font-medium text-slate-600">
+                    <span className="font-medium text-slate-600 dark:text-slate-200">
                       [{m.roundType}#{m.roundNo}] {m.author}:
                     </span>{" "}
                     <span className="whitespace-pre-wrap">{m.content}</span>
@@ -115,17 +115,17 @@ export function TaskDetail() {
           {tab === "runs" && (
             <div className="space-y-2">
               {runs.length === 0 ? (
-                <p className="text-slate-500">暂无 runs</p>
+                <p className="text-slate-500 dark:text-slate-400">暂无 runs</p>
               ) : (
                 runs.map((r) => (
-                  <div key={r.id} className="rounded border p-2 text-sm">
+                  <div key={r.id} className="rounded border border-slate-200 p-2 text-sm dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
                     <p>
                       <span className="font-medium">{r.mode}</span> — {r.status}
                       {r.errorMessage && (
-                        <span className="text-red-600"> — {r.errorMessage}</span>
+                        <span className="text-red-600 dark:text-red-400"> — {r.errorMessage}</span>
                       )}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {r.startedAt ?? ""} ~ {r.finishedAt ?? ""}
                     </p>
                   </div>
@@ -136,7 +136,7 @@ export function TaskDetail() {
           {tab === "artifacts" && (
             <div className="space-y-2">
               {artifacts.length === 0 ? (
-                <p className="text-slate-500">暂无 artifacts</p>
+                <p className="text-slate-500 dark:text-slate-400">暂无 artifacts</p>
               ) : (
                 artifacts.map((a) => (
                   <div key={a.id} className="flex items-center gap-2 text-sm">
@@ -145,7 +145,7 @@ export function TaskDetail() {
                       href={artifactDownloadUrl(a.id)}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-600 underline"
+                      className="text-blue-600 underline dark:text-blue-400"
                     >
                       {a.uri.split("/").pop()}
                     </a>

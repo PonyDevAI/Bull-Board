@@ -1,6 +1,6 @@
 /**
- * Bull Board Dashboard - Design Tokens（宝塔风格）
- * 全站统一：圆角 12px、卡片浅边框+轻阴影、light/dark 色板
+ * Bull Board Dashboard - 宝塔风格 Design Tokens
+ * 参考宝塔面板：纯白侧栏、绿色主色、浅灰主背景、卡片圆角+轻阴影、进度条绿/橙/红
  */
 
 @layer base {
@@ -10,55 +10,59 @@
     --radius-sm: 8px;
     --radius-lg: 16px;
 
-    /* 色板 light */
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    /* 宝塔风格 light：绿色主色、浅灰背景 */
+    --background: 220 14% 96%;
+    --foreground: 220 10% 18%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --primary: 222 47% 11%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --card-foreground: 220 10% 18%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 220 10% 18%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 8% 46%;
+    --accent: 220 14% 94%;
+    --accent-foreground: 220 10% 18%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
-    --ring: 222 47% 11%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --ring: 160 84% 39%;
 
     /* 卡片：浅边框 + 轻阴影 */
-    --card-border: 214 32% 91%;
-    --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+    --card-border: 220 13% 91%;
+    --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
 
-    /* 布局 */
+    /* 布局：统一内容间距（与 Sidebar/Topbar 的留白 = 块与块 = 列与列，一处控制） */
     --sidebar-width: 240px;
     --sidebar-width-collapsed: 68px;
     --topbar-height: 56px;
-    --page-container-padding: 1.5rem;
-    --grid-gap: 1rem;
+    --content-spacing: 0.75rem;
+    --page-container-padding: var(--content-spacing);
+    --content-block-gap: var(--content-spacing);
+    --grid-gap: var(--content-spacing);
+    --content-inner-gap: 0.5rem;
     --card-padding: 1rem;
   }
 
+  /* 宝塔风格 dark：深色背景 + 绿色主色一致 */
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 14%;
-    --card-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --ring: 215 20% 65%;
-    --card-border: 217 33% 17%;
-    --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+    --background: 222 47% 9%;
+    --foreground: 210 20% 98%;
+    --card: 222 47% 12%;
+    --card-foreground: 210 20% 98%;
+    --primary: 160 84% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 16%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 217 33% 16%;
+    --muted-foreground: 215 18% 62%;
+    --accent: 217 33% 16%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 25% 22%;
+    --ring: 160 84% 45%;
+    --card-border: 217 25% 22%;
+    --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4);
   }
 }

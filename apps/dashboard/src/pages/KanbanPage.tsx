@@ -32,17 +32,7 @@ export function KanbanPage() {
   }, []);
 
   return (
-    <div className="space-y-4">
-      {/* 顶部：Board Tabs（可滚动）+ “+” 新建 board */}
-      <div>
-        <h1 className="text-xl font-semibold text-foreground md:text-2xl">
-          Kanban
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          看板与任务列（mock 数据，支持拖拽与详情抽屉）
-        </p>
-      </div>
-
+    <div className="space-y-block">
       <BoardTabs
         boards={Object.values(boardState)}
         activeId={activeBoardId}

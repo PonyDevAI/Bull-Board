@@ -39,7 +39,7 @@ export function DiskUsageRings({ disks, className }: DiskUsageRingsProps) {
                   </span>
                 )}
               </div>
-              <Progress value={d.percent} className="h-1.5" />
+              <Progress value={d.percent} variant="status" className="h-1.5" />
               <p className="text-xs text-muted-foreground">
                 {formatBytes(d.used)} / {formatBytes(d.total)}
               </p>

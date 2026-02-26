@@ -19,7 +19,7 @@ export function UserMenu() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border-2 border-border bg-muted text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
         title="用户菜单"
         aria-label="用户菜单"
         aria-expanded={open}

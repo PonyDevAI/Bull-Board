@@ -44,22 +44,22 @@ export function KanbanColumn({
   return (
     <div
       ref={ref}
-      className="flex w-[280px] shrink-0 flex-col rounded-global border border-border bg-muted/30"
+      className="flex w-[300px] shrink-0 flex-col rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/50"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {/* 列头：标题 + 数量 badge */}
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 rounded-t-global min-h-[44px]">
-        <span className="text-sm font-medium text-foreground truncate">
+      {/* 列头：标题 + 数量 badge（宝塔风格） */}
+      <div className="flex items-center justify-between gap-2 rounded-t-xl border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800/80">
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
           {column.title}
         </span>
-        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-emerald-100 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
           {cards.length}
         </span>
       </div>
 
       {/* 卡片列表 */}
-      <div className="flex-1 space-y-2 overflow-y-auto p-2 min-h-[120px] overflow-x-hidden">
+      <div className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden p-3 min-h-[160px]">
         {cards.map((card) => (
           <KanbanCard
             key={card.id}
@@ -73,13 +73,13 @@ export function KanbanColumn({
         ))}
       </div>
 
-      {/* 列底：快速新建卡片（占位） */}
+      {/* 列底：添加卡片（宝塔风格） */}
       <button
         type="button"
         onClick={() => onAddCard(column.id)}
-        className="flex min-h-[44px] items-center justify-center gap-2 border-t border-border py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground rounded-b-global transition-colors"
+        className="flex min-h-[44px] items-center justify-center gap-2 rounded-b-xl border-t border-slate-200 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-emerald-600 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="h-4 w-4 shrink-0" />
         <span>添加卡片</span>
       </button>
     </div>

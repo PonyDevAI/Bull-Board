@@ -59,9 +59,7 @@ export function SettingsPage() {
   const [tab, setTab] = useState("general");
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
-
+    <div className="space-y-block">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap gap-1 border-b border-border pb-2 mb-4 overflow-x-auto">
           {SETTINGS_TABS.map((t) => (

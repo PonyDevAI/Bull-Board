@@ -25,7 +25,7 @@ export function StatCard(p: StatCardProps) {
           </span>
           {progress != null && (
             <div className="w-12 shrink-0">
-              <Progress value={progress} className="h-2" />
+              <Progress value={progress} variant="status" className="h-2" />
             </div>
           )}
         </div>

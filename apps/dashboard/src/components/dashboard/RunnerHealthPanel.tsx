@@ -12,7 +12,7 @@ export function RunnerHealthPanel(p: { runners: Runner[]; className?: string }) 
         <h3 className="text-lg font-medium text-foreground">Runner Health</h3>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="space-y-3">
+        <div className="space-y-inner">
           {runners.map((r) => (
             <div key={r.name} className="rounded-global-sm border border-border bg-muted/30 p-3">
               <div className="flex items-center justify-between">

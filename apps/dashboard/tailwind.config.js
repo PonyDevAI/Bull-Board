@@ -47,6 +47,14 @@ export default {
       minHeight: {
         topbar: "var(--topbar-height)",
       },
+      padding: {
+        page: "var(--page-container-padding)",
+      },
+      spacing: {
+        block: "var(--content-block-gap)",
+        gap: "var(--grid-gap)",
+        inner: "var(--content-inner-gap)",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

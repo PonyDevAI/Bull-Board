@@ -48,7 +48,7 @@ export function AppShell() {
       {/* Main：顶部固定 Topbar + 下方 MainContent 可滚动 */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar onSidebarToggle={() => setSidebarOpen(true)} />
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-page">
           <Outlet />
         </main>
       </div>

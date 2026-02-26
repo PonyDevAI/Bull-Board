@@ -56,11 +56,11 @@ export function Board() {
     (tasks ?? []).filter((t) => statuses.includes(t.status));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-block">
       {/* 主标题 + 副标题 */}
       <div>
-        <h1 className="text-lg font-bold text-slate-800 md:text-xl">任务控制中心 (Task Center)</h1>
-        <p className="mt-0.5 text-xs text-slate-500 md:text-sm">实时监控与管理任务队列</p>
+        <h1 className="text-lg font-bold text-slate-800 md:text-xl dark:text-slate-100">任务控制中心 (Task Center)</h1>
+        <p className="mt-0.5 text-xs text-slate-500 md:text-sm dark:text-slate-400">实时监控与管理任务队列</p>
       </div>
 
       {/* 绿色子栏：移动端纵向堆叠，桌面端横排 */}
@@ -76,7 +76,7 @@ export function Board() {
           </span>
           <Button
             size="sm"
-            className="min-h-[44px] min-w-[44px] bg-white text-emerald-700 hover:bg-emerald-50 md:min-h-0 md:min-w-0"
+            className="min-h-[44px] min-w-[44px] bg-white text-emerald-700 hover:bg-emerald-50 md:min-h-0 md:min-w-0 dark:bg-slate-200 dark:text-emerald-700 dark:hover:bg-slate-300"
           >
             <span className="mr-1">▶</span>
             整体开始 (Start All)
@@ -101,10 +101,10 @@ export function Board() {
 
       {/* 新建 Task 弹层：移动端全宽 */}
       {newTaskOpen && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm w-full max-w-md">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm w-full max-w-md dark:border-slate-600 dark:bg-slate-800">
           <form onSubmit={handleCreateTask} className="space-y-3">
             <select
-              className="w-full min-h-[44px] rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+              className="w-full min-h-[44px] rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-500"
               value={newTaskWs}
               onChange={(e) => setNewTaskWs(e.target.value)}
               required
@@ -115,7 +115,7 @@ export function Board() {
               ))}
             </select>
             <input
-              className="w-full min-h-[44px] rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+              className="w-full min-h-[44px] rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-500"
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               placeholder="Task 标题"
@@ -130,49 +130,49 @@ export function Board() {
       )}
 
       {loading ? (
-        <p className="text-slate-500">加载中...</p>
+        <p className="text-slate-500 dark:text-slate-400">加载中...</p>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none">
+        <div className="flex gap-gap overflow-x-auto pb-page -mx-page px-page md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none">
           {COLUMNS.map((col) => {
             const colTasks = tasksForColumn(col.statuses);
             return (
               <div
                 key={col.key}
-                className="flex min-w-[260px] max-w-[260px] md:min-w-[280px] md:max-w-none flex-col shrink-0 snap-start rounded-lg border border-slate-200 bg-slate-50/50"
+                className="flex min-w-[260px] max-w-[260px] md:min-w-[280px] md:max-w-none flex-col shrink-0 snap-start rounded-lg border border-slate-200 bg-slate-50/50 dark:border-slate-600 dark:bg-slate-800/50"
               >
                 {/* 列头：色点 + 标题 + 数量 */}
-                <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2.5 min-h-[44px]">
+                <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2.5 min-h-[44px] dark:border-slate-600 dark:bg-slate-800">
                   <span className={`h-2 w-2 shrink-0 rounded-full ${col.dotColor}`} />
-                  <span className="text-sm font-medium text-slate-700 truncate">
+                  <span className="text-sm font-medium text-slate-700 truncate dark:text-slate-200">
                     {col.label} ({col.labelEn})
                   </span>
-                  <span className="ml-auto text-sm font-medium text-slate-600">{colTasks.length}</span>
+                  <span className="ml-auto text-sm font-medium text-slate-600 dark:text-slate-400">{colTasks.length}</span>
                 </div>
                 <div className="flex-1 space-y-2 overflow-y-auto p-2 min-h-[120px] overflow-x-hidden">
                   {colTasks.length === 0 && col.key === "failed" ? (
-                    <p className="py-6 text-center text-sm text-slate-400">无任务</p>
+                    <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">无任务</p>
                   ) : (
                     colTasks.map((t) => (
                       <div
                         key={t.id}
-                        className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow min-h-[44px]"
+                        className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow min-h-[44px] dark:border-slate-600 dark:bg-slate-800"
                       >
                         <Link to={"/tasks/" + t.id} className="block">
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs font-medium text-slate-500">Step {(t.planRound || 0) + (t.fixRound || 0)}</span>
-                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600 truncate max-w-[100px] md:max-w-none">
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Step {(t.planRound || 0) + (t.fixRound || 0)}</span>
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600 truncate max-w-[100px] md:max-w-none dark:bg-slate-700 dark:text-slate-300">
                               {t.workspaceName ?? "task"}
                             </span>
                           </div>
-                          <p className="mt-1.5 line-clamp-2 text-sm font-semibold text-slate-800">{t.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs text-slate-500">
+                          <p className="mt-1.5 line-clamp-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t.title}</p>
+                          <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
                             {t.description || t.title}
                           </p>
                           <div className="mt-2 flex items-center justify-between">
-                            <span className="text-xs text-slate-400">Step {(t.planRound || 0) + (t.fixRound || 0)}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">Step {(t.planRound || 0) + (t.fixRound || 0)}</span>
                             <div className="flex items-center gap-1">
-                              <span className="rounded p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer md:p-1 md:min-h-0 md:min-w-0" title="详情">ℹ</span>
-                              <button type="button" className="rounded p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-red-500 hover:bg-red-50 md:p-1 md:min-h-0 md:min-w-0" title="停止" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                              <span className="rounded p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer md:p-1 md:min-h-0 md:min-w-0 dark:hover:bg-blue-900/30" title="详情">ℹ</span>
+                              <button type="button" className="rounded p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-red-500 hover:bg-red-50 md:p-1 md:min-h-0 md:min-w-0 dark:hover:bg-red-950/30" title="停止" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                                 ✕
                               </button>
                             </div>

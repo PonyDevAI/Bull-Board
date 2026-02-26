@@ -9,7 +9,7 @@ const OPTIONS: { value: ThemeValue; label: string; Icon: React.ComponentType<{ c
   { value: "system", label: "跟随系统", Icon: Monitor },
 ];
 
-export function ThemeToggle() {
+export function ThemeToggle({ compact }: { compact?: boolean }) {
   const { theme, setTheme, resolved } = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -22,6 +22,23 @@ export function ThemeToggle() {
     return () => document.removeEventListener("click", handler);
   }, []);
 
+  /** 紧凑模式：单图标 toggle，点击在太阳/月亮间切换显示 */
+  if (compact) {
+    const isDark = resolved === "dark";
+    return (
+      <button
+        type="button"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        title={isDark ? "切换到浅色" : "切换到深色"}
+        aria-label={isDark ? "浅色" : "深色"}
+        aria-pressed={isDark}
+      >
+        {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+      </button>
+    );
+  }
+
   const ResolvedIcon = resolved === "dark" ? Moon : Sun;
 
   return (
@@ -29,7 +46,7 @@ export function ThemeToggle() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-global-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
         title="主题"
         aria-label="主题"
         aria-expanded={open}

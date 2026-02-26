@@ -17,7 +17,7 @@ export function QualityRiskPanel({
   className?: string;
 }) {
   return (
-    <div className={cn("grid gap-4 md:grid-cols-2", className)}>
+    <div className={cn("grid gap-gap md:grid-cols-2", className)}>
       <Card className="p-4">
         <CardHeader className="p-0 pb-3">
           <h3 className="text-lg font-medium text-foreground">24h 质量与失败</h3>

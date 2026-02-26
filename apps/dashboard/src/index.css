@@ -22,13 +22,55 @@ body {
   height: 100%;
 }
 
-/* 看板列滚动条 */
-.overflow-y-auto::-webkit-scrollbar {
+/* 全局滚动条：细、圆角、与主题一致（宝塔风格） */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(220 13% 75%) transparent;
+}
+
+.dark * {
+  scrollbar-color: hsl(220 10% 40%) transparent;
+}
+
+/* WebKit（Chrome / Safari / Edge） */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: hsl(220 13% 78%);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 13% 65%);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: hsl(220 13% 55%);
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background: hsl(220 10% 38%);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 10% 48%);
+}
+
+.dark *::-webkit-scrollbar-thumb:active {
+  background: hsl(220 10% 58%);
+}
+
+/* 侧栏、主内容等可滚动区域保持细条 */
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar {
   width: 6px;
-}
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-slate-200;
-}
-.overflow-y-auto::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  height: 6px;
 }

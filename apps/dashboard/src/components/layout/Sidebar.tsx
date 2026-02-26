@@ -14,17 +14,24 @@ import {
   ClipboardList,
   Bell,
   Settings,
-  PanelLeftClose,
-  PanelLeft,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sidebarNavGroups, type NavItem } from "@/mocks/sidebar";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 
 const SIDEBAR_STORAGE_KEY = "bb-sidebar";
 const WIDTH_EXPANDED = 240;
 const WIDTH_COLLAPSED = 68;
-/** 与 Topbar 高度一致，保证左侧 header 与右侧 topbar 对齐 */
-const HEADER_HEIGHT = 56;
+/** 收起时与菜单项同一行高 */
+const SIDEBAR_ROW_HEIGHT = 32;
+/** 与 Topbar 高度一致 */
+const SIDEBAR_HEADER_HEIGHT = 56;
+/** header logo 与菜单图标统一尺寸（30px） */
+const SIDEBAR_ICON_SIZE = "h-[30px] w-[30px]";
 
 function getStoredCollapsed(): boolean {
   try {
@@ -60,7 +67,7 @@ const iconMap = {
 
 function NavIcon({ name }: { name: string }) {
   const Icon = iconMap[name as keyof typeof iconMap];
-  return Icon ? <Icon className="h-4 w-4 shrink-0" /> : null;
+  return Icon ? <Icon className="h-5 w-5 shrink-0" /> : null;
 }
 
 function Badge({ text, variant = "default" }: { text: string; variant?: NavItem["badgeVariant"] }) {
@@ -88,49 +95,92 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
   const location = useLocation();
   const width = collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED;
 
+  /** 选中/hover：如图 card，左侧绿色圆角 border + 浅色背景 + 图标变色 */
   const navItemClass = (active: boolean) =>
     cn(
-      "flex min-h-[44px] items-center gap-2 rounded-global-sm px-3 py-2.5 text-sm transition-colors",
-      collapsed && "justify-center px-2",
-      active
-        ? "bg-primary text-primary-foreground"
-        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      "flex items-center gap-2 rounded-lg border-l-4 px-2 py-1.5 text-sm transition-colors",
+      collapsed ? "min-h-[32px] justify-center px-1.5" : "min-h-[32px]",
+      "border-l-transparent text-slate-600 dark:text-slate-400",
+      "hover:border-l-emerald-500 hover:bg-emerald-50/60 hover:text-slate-800 dark:hover:border-l-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:text-white",
+      active &&
+        "border-l-emerald-500 bg-emerald-50/60 text-slate-800 dark:border-l-emerald-400 dark:bg-emerald-500/10 dark:text-white"
     );
 
-  const navItemActiveBar = (active: boolean) =>
-    active ? (
-      <span
-        className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r bg-primary-foreground"
-        aria-hidden
-      />
-    ) : null;
+  const handleToggleCollapse = () => {
+    const next = !collapsed;
+    onCollapsedChange(next);
+    setStoredCollapsed(next);
+  };
 
   return (
     <aside
-      className="flex h-full shrink-0 flex-col border-r border-border bg-card"
+      className="relative flex h-full shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
       style={{ width: isMobile ? Math.min(width, 280) : width }}
     >
-      {/* 顶部固定 SidebarHeader：与 Topbar 同高，Bull Board logo + 文案（收起时仅 logo） */}
+      {/* 竖线顶部的圆形收起/展开按钮（仅桌面端，与顶栏对齐） */}
+      {!isMobile && (
+        <button
+          type="button"
+          onClick={handleToggleCollapse}
+          className="absolute right-0 top-[28px] z-10 flex h-6 w-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          title={collapsed ? "展开侧栏" : "收起侧栏"}
+          aria-label={collapsed ? "展开侧栏" : "收起侧栏"}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-3 w-3 shrink-0" />
+          ) : (
+            <ChevronLeft className="h-3 w-3 shrink-0" />
+          )}
+        </button>
+      )}
+
+      {/* 顶部固定 SidebarHeader：布局与菜单栏一致——收起时复用菜单项同一套 class，展开时同结构 + 文字与 badge */}
       <header
-        className="flex shrink-0 items-center gap-2 border-b border-border px-3"
-        style={{ height: HEADER_HEIGHT }}
+        className="flex shrink-0 border-b border-slate-200 dark:border-slate-700"
+        style={{ height: SIDEBAR_HEADER_HEIGHT, minHeight: SIDEBAR_HEADER_HEIGHT }}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-global-sm bg-primary text-primary-foreground text-sm font-bold">
-          BB
-        </div>
-        {!collapsed && (
-          <div className="min-w-0 flex-1">
-            <span className="truncate text-sm font-semibold text-foreground">Bull Board</span>
-            {!isMobile && (
-              <p className="truncate text-xs text-muted-foreground">任务与看板</p>
-            )}
+        {collapsed ? (
+          /* 收起：与 nav 同宽——右侧预留 6px 与 nav 滚动条一致，图标对齐 */
+          <div className="flex h-full items-center pl-2 pr-[14px]">
+            <div
+              className={cn(
+                "flex min-h-[32px] w-full items-center rounded-lg border-l-4 border-l-transparent px-1.5 py-1.5 text-sm",
+                "justify-center"
+              )}
+            >
+              <span className={cn("relative flex shrink-0 items-center justify-center text-foreground dark:text-slate-200", SIDEBAR_ICON_SIZE)}>
+                <LayoutDashboard className="h-5 w-5" />
+                <span
+                  className="absolute -right-0.5 -top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-medium leading-none text-white dark:bg-emerald-400 dark:text-slate-900"
+                  title="通知"
+                >
+                  1
+                </span>
+              </span>
+            </div>
+          </div>
+        ) : (
+          /* 展开：与菜单项同结构——p-2 + 一行带 border-l-4 + pl-3 占位 + 图标 + gap-2 + 文字 + badge */
+          <div className="flex h-full min-w-0 flex-1 items-center gap-2 pl-2 pr-2 min-h-0">
+            <div className="flex shrink-0 items-center justify-start pl-3">
+              <span className={cn("relative flex shrink-0 items-center justify-center text-foreground dark:text-slate-200", SIDEBAR_ICON_SIZE)}>
+                <LayoutDashboard className="h-5 w-5" />
+              </span>
+            </div>
+            <span className="min-w-0 truncate text-sm font-medium text-foreground">Bull Board</span>
+            <span
+              className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded bg-emerald-500 px-1.5 text-xs font-medium text-white dark:bg-emerald-400 dark:text-slate-900"
+              title="通知"
+            >
+              1
+            </span>
           </div>
         )}
         {isMobile && onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-global-sm p-2 text-muted-foreground hover:bg-muted"
+            className="min-h-[44px] min-w-[44px] shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="关闭"
           >
             ✕
@@ -138,10 +188,10 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
         )}
       </header>
 
-      {/* 中部 SidebarNav：菜单可滚动 */}
-      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+      {/* 中部 SidebarNav：菜单可滚动，预留滚动条宽度与 header 一致，图标对齐 */}
+      <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2 [scrollbar-gutter:stable]">
         {sidebarNavGroups.map((group, gi) => (
-          <div key={gi} className="flex flex-col gap-0.5">
+          <div key={gi} className="flex flex-col gap-4">
             {group.items.map((item) => {
               const active =
                 item.to === "/dashboard"
@@ -149,18 +199,39 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
                   : location.pathname.startsWith(item.to);
               return (
                 <div key={item.to} className="relative">
-                  {navItemActiveBar(active)}
                   <Link
                     to={item.to}
-                    className={cn(navItemClass(active), "relative")}
+                    className={cn(navItemClass(active), "group relative")}
                     title={collapsed ? item.label : undefined}
                   >
-                    <span className={active ? "text-primary-foreground" : ""}>
+                    <span
+                      className={cn(
+                        "relative flex shrink-0 items-center justify-center transition-colors",
+                        SIDEBAR_ICON_SIZE,
+                        active
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+                      )}
+                    >
                       <NavIcon name={item.icon} />
+                      {collapsed && item.badge != null && (
+                        <span
+                          className={cn(
+                            "absolute -right-0.5 -top-0.5 flex h-3 w-3 min-w-[12px] items-center justify-center rounded-full px-0.5 text-[8px] font-medium leading-none",
+                            item.badgeVariant === "success" && "bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-900",
+                            item.badgeVariant === "warning" && "bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-900",
+                            item.badgeVariant === "destructive" && "bg-red-500 text-white dark:bg-red-400 dark:text-slate-900",
+                            (item.badgeVariant === "default" || !item.badgeVariant) && "bg-muted text-muted-foreground"
+                          )}
+                          title={item.badge}
+                        >
+                          {item.badge.length > 2 ? item.badge.slice(0, 1) : item.badge}
+                        </span>
+                      )}
                     </span>
                     {!collapsed && (
                       <>
-                        <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
+                        <span className="min-w-0 flex-1 truncate whitespace-nowrap font-medium">{item.label}</span>
                         {item.badge != null && <Badge text={item.badge} variant={item.badgeVariant} />}
                       </>
                     )}
@@ -170,31 +241,49 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
             })}
           </div>
         ))}
+        {/* 菜单栏底部：退出（样式同其他菜单，hover 时变红） */}
+        <div className="mt-auto">
+          <button
+            type="button"
+            className={cn(
+              "group/exit flex w-full min-h-[32px] items-center gap-2 rounded-lg border-l-4 border-l-transparent px-2 py-1.5 text-sm transition-colors",
+              "text-slate-600 dark:text-slate-400",
+              "hover:border-l-red-500 hover:text-red-600 dark:hover:border-l-red-400 dark:hover:text-red-400",
+              collapsed && "justify-center px-1.5"
+            )}
+            title="退出"
+            aria-label="退出"
+          >
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center transition-colors",
+                SIDEBAR_ICON_SIZE,
+                "text-slate-500 dark:text-slate-400 group-hover/exit:text-red-600 dark:group-hover/exit:text-red-400"
+              )}
+            >
+              <LogOut className="h-5 w-5" />
+            </span>
+            {!collapsed && <span>退出</span>}
+          </button>
+        </div>
       </nav>
 
-      {/* 底部固定 SidebarFooter：收起 / 展开 按钮，样式与普通菜单一致 */}
-      <footer className="shrink-0 border-t border-border p-2">
-        <button
-          type="button"
-          onClick={() => {
-            const next = !collapsed;
-            onCollapsedChange(next);
-            setStoredCollapsed(next);
-          }}
-          className={cn(
-            "flex w-full min-h-[44px] items-center gap-2 rounded-global-sm px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-            collapsed && "justify-center px-2"
-          )}
-          title={collapsed ? "展开" : "收起"}
-          aria-label={collapsed ? "展开侧栏" : "收起侧栏"}
-        >
-          {collapsed ? (
-            <PanelLeft className="h-4 w-4 shrink-0" />
-          ) : (
-            <PanelLeftClose className="h-4 w-4 shrink-0" />
-          )}
-          {!collapsed && <span className="font-medium">收起</span>}
-        </button>
+      {/* 底部固定 SidebarFooter：版本号 + 暗黑模式切换（紧凑高度） */}
+      <footer
+        className={cn(
+          "flex shrink-0 items-center gap-2 border-t border-slate-200 px-2 py-1.5 dark:border-slate-700",
+          collapsed ? "justify-center" : "justify-between"
+        )}
+      >
+        {!collapsed && (
+          <span className="truncate text-xs text-muted-foreground" title="版本">
+            v0.1.0
+          </span>
+        )}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <ThemeToggle compact />
+          <LanguageSwitcher compact />
+        </div>
       </footer>
     </aside>
   );

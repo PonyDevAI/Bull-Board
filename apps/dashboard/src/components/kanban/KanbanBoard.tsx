@@ -49,7 +49,7 @@ export function KanbanBoard({ board, onBoardChange }: KanbanBoardProps) {
 
   return (
     <>
-      <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none">
+      <div className="flex gap-gap overflow-x-auto pb-page -mx-page px-page md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none">
         {board.columns.map((col) => {
           const cards = col.cardIds
             .map((id) => board.cards[id])

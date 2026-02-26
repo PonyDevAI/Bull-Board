@@ -19,17 +19,15 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 
 export function DashboardHome() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-
+    <div className="space-y-block">
       {/* Row1: KPI 卡 + 磁盘分区 */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-gap md:grid-cols-4">
         <StatCard value={kpis.load.value} label={kpis.load.label} unit={kpis.load.unit} progress={30} />
         <StatCard value={kpis.cpu.value} label={kpis.cpu.label} unit={kpis.cpu.unit} progress={kpis.cpu.value} />
         <StatCard value={kpis.mem.value} label={kpis.mem.label} unit={kpis.mem.unit} progress={kpis.mem.value} />
         <StatCard value={kpis.disk.value} label={kpis.disk.label} unit={kpis.disk.unit} progress={kpis.disk.value} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-gap lg:grid-cols-3">
         <div className="lg:col-span-2" />
         <DiskUsageRings disks={disks} />
       </div>
@@ -44,7 +42,7 @@ export function DashboardHome() {
       />
 
       {/* Row3: Runner Health + Capacity */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-gap md:grid-cols-2">
         <RunnerHealthPanel runners={runners} />
         <CapacitySummary
           total={capacity.total}
