@@ -1,6 +1,6 @@
 import { Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getWorkspaces, type Workspace } from "@/api";
+import { getWorkspaces, authMe, authLogout, type Workspace } from "@/api";
 import { Workspaces } from "@/pages/Workspaces";
 import { Board } from "@/pages/Board";
 import { TaskDetail } from "@/pages/TaskDetail";
@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { DashboardHome } from "@/pages/DashboardHome";
 import { KanbanPage } from "@/pages/KanbanPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { LoginPage } from "@/pages/LoginPage";
 
 function Home() {
   return (
@@ -137,9 +138,16 @@ function Sidebar({
 
 export default function App() {
   const location = useLocation();
+  const [authStatus, setAuthStatus] = useState<"pending" | "ok" | null>("pending");
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    authMe()
+      .then((u) => setAuthStatus(u ? "ok" : null))
+      .catch(() => setAuthStatus(null));
+  }, []);
 
   useEffect(() => {
     getWorkspaces().then(setWorkspaces).catch(() => {});
@@ -155,10 +163,30 @@ export default function App() {
 
   const showDrawer = isMobile && sidebarOpen;
 
-  // Dashboard 全 mock：/dashboard 与 /kanban 使用 AppShell + 新 Sidebar（分组菜单、折叠、badge、Workspace 切换）
+  if (location.pathname === "/login") {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage onLoginSuccess={() => setAuthStatus("ok")} />} />
+      </Routes>
+    );
+  }
+  if (authStatus === "pending") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <span className="text-slate-500 dark:text-slate-400">加载中…</span>
+      </div>
+    );
+  }
+  if (authStatus === null) {
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={"/login?returnTo=" + returnTo} replace />;
+  }
+
+  // Dashboard 布局：/dashboard、/settings、/kanban 共用 AppShell + Sidebar
   if (
     location.pathname === "/" ||
     location.pathname.startsWith("/dashboard") ||
+    location.pathname.startsWith("/settings") ||
     location.pathname === "/kanban"
   ) {
     return (
@@ -178,7 +206,9 @@ export default function App() {
           <Route path="logs" element={<div className="text-muted-foreground p-4">Logs 占位</div>} />
           <Route path="audit" element={<div className="text-muted-foreground p-4">Audit 占位</div>} />
           <Route path="alerts" element={<div className="text-muted-foreground p-4">Alerts 占位</div>} />
-          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route path="/settings" element={<AppShell />}>
+          <Route index element={<SettingsPage />} />
         </Route>
         <Route path="/kanban" element={<AppShell />}>
           <Route index element={<KanbanPage />} />
@@ -229,6 +259,13 @@ export default function App() {
             </div>
             <button type="button" className="min-h-[44px] min-w-[44px] rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" title="刷新">
               <span className="text-lg">🔄</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => authLogout().then(() => { window.location.href = "/login"; })}
+              className="min-h-[44px] rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              退出
             </button>
             <div className="flex h-6 w-10 items-center rounded-full bg-slate-200 min-h-[44px] min-w-[44px] justify-center md:min-h-0 md:min-w-0 md:justify-start dark:bg-slate-700">
               <div className="ml-1 h-4 w-4 rounded-full bg-white shadow dark:bg-slate-300" />

@@ -16,8 +16,7 @@ export function Topbar({ onSidebarToggle }: TopbarProps) {
       className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
       style={{ minHeight: TOPBAR_HEIGHT }}
     >
-      {/* 左侧：仅移动端显示汉堡菜单 */}
-      <div className="flex shrink-0 items-center md:w-0 md:overflow-hidden">
+      <div className="flex min-w-0 flex-1 items-center md:w-0 md:overflow-hidden">
         <button
           type="button"
           onClick={onSidebarToggle}
@@ -28,9 +27,8 @@ export function Topbar({ onSidebarToggle }: TopbarProps) {
         </button>
       </div>
 
-      {/* 右侧：仅 Workspace 选择 */}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-medium shadow-sm dark:bg-emerald-500">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-medium text-white dark:bg-emerald-500">
           {workspace?.name?.charAt(0) ?? "B"}
         </div>
         <WorkspaceSwitcher workspace={workspace} onWorkspaceChange={setWorkspace} />

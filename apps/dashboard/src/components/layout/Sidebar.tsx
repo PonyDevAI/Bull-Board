@@ -1,4 +1,7 @@
+import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import {
   LayoutDashboard,
   LayoutGrid,
@@ -17,11 +20,21 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  X,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sidebarNavGroups, type NavItem } from "@/mocks/sidebar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import {
+  getSystemVersion,
+  getSystemUpdate,
+  ignoreVersion,
+  getUpgradePlan,
+  authLogout,
+  type SystemUpdate,
+} from "@/api";
 
 const SIDEBAR_STORAGE_KEY = "bb-sidebar";
 const WIDTH_EXPANDED = 240;
@@ -94,6 +107,40 @@ export interface SidebarProps {
 export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const width = collapsed ? WIDTH_COLLAPSED : WIDTH_EXPANDED;
+  const [currentVersion, setCurrentVersion] = useState<string>("");
+  const [updateInfo, setUpdateInfo] = useState<SystemUpdate | null>(null);
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const [copyDone, setCopyDone] = useState(false);
+
+  useEffect(() => {
+    getSystemVersion()
+      .then((v) => setCurrentVersion(v.current_version || "dev"))
+      .catch(() => setCurrentVersion("—"));
+  }, []);
+
+  useEffect(() => {
+    getSystemUpdate()
+      .then(setUpdateInfo)
+      .catch(() => setUpdateInfo(null));
+  }, [updateModalOpen]);
+
+  // 确保挂载时弹窗关闭，避免误显示蒙层
+  useEffect(() => {
+    setUpdateModalOpen(false);
+  }, []);
+
+  const closeUpdateModal = useCallback(() => setUpdateModalOpen(false), []);
+
+  useEffect(() => {
+    if (!updateModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeUpdateModal();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [updateModalOpen, closeUpdateModal]);
+
+  const hasUpdate = !!updateInfo?.has_update && !!updateInfo?.latest?.version;
 
   /** 选中/hover：如图 card，左侧绿色圆角 border + 浅色背景 + 图标变色 */
   const navItemClass = (active: boolean) =>
@@ -245,6 +292,11 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
         <div className="mt-auto">
           <button
             type="button"
+            onClick={() => {
+              authLogout().then(() => {
+                window.location.href = "/login";
+              });
+            }}
             className={cn(
               "group/exit flex w-full min-h-[32px] items-center gap-2 rounded-lg border-l-4 border-l-transparent px-2 py-1.5 text-sm transition-colors",
               "text-slate-600 dark:text-slate-400",
@@ -276,15 +328,163 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
         )}
       >
         {!collapsed && (
-          <span className="truncate text-xs text-muted-foreground" title="版本">
-            v0.1.0
-          </span>
+          <button
+            type="button"
+            onClick={() => setUpdateModalOpen(true)}
+            className="flex min-h-[32px] min-w-[44px] items-center gap-1 rounded text-xs text-muted-foreground hover:text-foreground"
+            title="版本与更新"
+          >
+            <span className="truncate">{currentVersion}</span>
+            {hasUpdate && (
+              <span className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-400">
+                更新
+              </span>
+            )}
+          </button>
         )}
         <div className="flex shrink-0 items-center gap-0.5">
           <ThemeToggle compact />
           <LanguageSwitcher compact />
         </div>
       </footer>
+
+      {/* 版本与更新弹窗（完全按宝塔样式：绿顶栏 + 波浪 + 白底内容 + 标准按钮） */}
+      {updateModalOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+            onClick={closeUpdateModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sidebar-update-modal-title"
+          >
+            <div
+              className="relative z-[101] flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-card shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 宝塔风格：绿色顶栏，白字，右侧关闭 */}
+              <div className="relative shrink-0 bg-primary px-4 py-3 text-primary-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 id="sidebar-update-modal-title" className="text-base font-semibold">
+                    版本更新
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={closeUpdateModal}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-white/20"
+                    aria-label="关闭"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                {/* 波浪形底边（绿→白过渡） */}
+                <div className="absolute bottom-0 left-0 right-0 h-3 overflow-hidden leading-[0]">
+                  <svg viewBox="0 0 400 12" className="w-full" preserveAspectRatio="none">
+                    <path
+                      fill="hsl(var(--card))"
+                      d="M0 12V0h400v12c-20-3-40-3-60 0s-40 3-60 0-40-3-60 0-40 3-60 0-40-3-60 0-40 3-60 0-20 3-40 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* 白底内容区，标准间距 */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-card pt-1">
+                {hasUpdate && updateInfo?.latest?.version ? (
+                  <>
+                    <div className="shrink-0 space-y-2 px-4 pt-4 pb-3">
+                      <p className="text-base font-semibold text-foreground">发现新版本</p>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        <span>
+                          最新版本：<strong className="text-primary">{updateInfo.latest.version}</strong>
+                        </span>
+                        {updateInfo.latest.published_at && (
+                          <span>更新时间：{updateInfo.latest.published_at.slice(0, 10)}</span>
+                        )}
+                      </div>
+                    </div>
+                    {updateInfo.latest.notes_md && (
+                      <div className="min-h-0 flex-1 overflow-y-auto border-y border-border px-4 py-3">
+                        <div className="prose prose-sm max-w-none dark:prose-invert prose-p:text-muted-foreground prose-li:text-muted-foreground text-sm">
+                          <ReactMarkdown>{updateInfo.latest.notes_md}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2 px-4 py-4">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await ignoreVersion(updateInfo!.latest!.version);
+                            closeUpdateModal();
+                            setUpdateInfo(null);
+                            getSystemUpdate().then(setUpdateInfo);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className="h-10 rounded-lg border border-border bg-muted px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/80"
+                      >
+                        忽略更新
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const plan = await getUpgradePlan(updateInfo!.latest!.version);
+                            await navigator.clipboard.writeText(plan.command);
+                            setCopyDone(true);
+                            setTimeout(() => setCopyDone(false), 2000);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className="h-10 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                      >
+                        {copyDone ? "已复制" : "立即更新"}
+                      </button>
+                      {updateInfo.latest.release_url && (
+                        <a
+                          href={updateInfo.latest.release_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-10 items-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                        >
+                          查看详情
+                        </a>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-col items-center gap-3 px-4 py-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-6 w-6" />
+                      </div>
+                      <p className="text-base font-semibold text-foreground">当前已经是最新版本</p>
+                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        <span>当前版本：{currentVersion}</span>
+                        {updateInfo?.latest?.published_at && (
+                          <span>当前发布时间：{updateInfo.latest.published_at.slice(0, 10)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="px-4 pb-4">
+                      <button
+                        type="button"
+                        onClick={closeUpdateModal}
+                        className="h-10 w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                      >
+                        关闭
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </aside>
   );
 }

@@ -34,6 +34,9 @@ func OpenDB(prefix string) (*sql.DB, string, error) {
 func initSchema(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+		CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
+		CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL);
+		CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, key_hash TEXT NOT NULL, key_prefix TEXT NOT NULL, created_at TEXT NOT NULL, last_used_at TEXT, revoked_at TEXT);
 		CREATE TABLE IF NOT EXISTS runners (id TEXT PRIMARY KEY, last_heartbeat TEXT);
 		CREATE TABLE IF NOT EXISTS workspaces (
 			id TEXT PRIMARY KEY,

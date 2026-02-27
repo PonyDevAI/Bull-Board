@@ -54,7 +54,7 @@ export const sidebarNavGroups: NavGroup[] = [
   },
   {
     items: [
-      { to: "/dashboard/settings", label: "Settings", icon: "Settings" },
+      { to: "/settings", label: "Settings", icon: "Settings" },
     ],
   },
 ];

@@ -63,10 +63,6 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/api/events" {
-		http.NotFound(w, r)
-		return
-	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -143,12 +139,17 @@ func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 	if path == "" {
 		path = "/"
 	}
+	// API 子路径在 apiRouter 中已处理，这里只处理 workspaces/tasks/runner 和静态
 	if strings.HasPrefix(path, "/api/workspaces") {
 		s.apiWorkspaces(w, r)
 		return
 	}
 	if strings.HasPrefix(path, "/api/tasks") {
 		s.apiTasks(w, r)
+		return
+	}
+	if strings.HasPrefix(path, "/api/runner/") {
+		s.runnerRoutes(w, r)
 		return
 	}
 	if strings.HasPrefix(path, "/api") {
@@ -174,20 +175,119 @@ func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
+// runnerRoutes 分发 /api/runner/*
+func (s *Server) runnerRoutes(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	switch {
+	case path == "/api/runner/heartbeat" && r.Method == http.MethodPost:
+		s.runnerHeartbeat(w, r)
+	case path == "/api/runner/poll":
+		s.runnerPoll(w, r)
+	case path == "/api/runner/report" && r.Method == http.MethodPost:
+		s.runnerReport(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+// apiRouter 处理所有 /api/* 请求：鉴权 + 路由
+func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	// 放行
+	if path == "/api/health" || path == "/health" {
+		s.health(w, r)
+		return
+	}
+	if path == "/api/auth/login" && r.Method == http.MethodPost {
+		s.authLogin(w, r)
+		return
+	}
+	if path == "/api/auth/logout" && r.Method == http.MethodPost {
+		s.authLogout(w, r)
+		return
+	}
+	// SSE 仅 session
+	if path == "/api/events" {
+		if !s.sessionRequired(w, r) {
+			return
+		}
+		s.events(w, r)
+		return
+	}
+	// 以下需要 session 或 API key
+	if path == "/api/auth/me" && r.Method == http.MethodGet {
+		s.authMe(w, r)
+		return
+	}
+	if path == "/api/api-keys" {
+		if r.Method == http.MethodGet {
+			s.apiKeysList(w, r)
+			return
+		}
+		if r.Method == http.MethodPost {
+			s.apiKeysCreate(w, r)
+			return
+		}
+		http.Error(w, "", http.StatusMethodNotAllowed)
+		return
+	}
+	if strings.HasPrefix(path, "/api/api-keys/") {
+		rest := strings.TrimPrefix(path, "/api/api-keys/")
+		parts := strings.SplitN(rest, "/", 2)
+		id := parts[0]
+		if id == "" {
+			http.NotFound(w, r)
+			return
+		}
+		if len(parts) > 1 && parts[1] == "revoke" && r.Method == http.MethodPost {
+			s.apiKeysRevoke(w, r)
+			return
+		}
+		if len(parts) == 1 && r.Method == http.MethodDelete {
+			s.apiKeysDelete(w, r)
+			return
+		}
+		http.NotFound(w, r)
+		return
+	}
+	if path == "/api/system/version" && r.Method == http.MethodGet {
+		s.systemVersion(w, r)
+		return
+	}
+	if path == "/api/system/update" && r.Method == http.MethodGet {
+		s.systemUpdate(w, r)
+		return
+	}
+	if path == "/api/system/update/ignore" && r.Method == http.MethodPost {
+		s.systemUpdateIgnore(w, r)
+		return
+	}
+	if path == "/api/system/upgrade/plan" && r.Method == http.MethodPost {
+		s.systemUpgradePlan(w, r)
+		return
+	}
+	// workspaces, tasks, runner 等需鉴权后交给 staticOrSPA 内部分发
+	if strings.HasPrefix(path, "/api/") {
+		if !s.authRequired(w, r) {
+			return
+		}
+		s.staticOrSPA(w, r)
+		return
+	}
+	s.staticOrSPA(w, r)
+}
+
+func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
+	s.staticOrSPA(w, r)
+}
+
 // ListenAndServe 根据配置启动 HTTP 或 HTTPS
 func (s *Server) ListenAndServe(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
 	mux.HandleFunc("/health", s.health)
-	mux.HandleFunc("/api/events", s.events)
-	mux.HandleFunc("/api/runner/heartbeat", s.runnerHeartbeat)
-	mux.HandleFunc("/api/runner/poll", s.runnerPoll)
-	mux.HandleFunc("/api/runner/report", s.runnerReport)
-	mux.HandleFunc("/api/workspaces", s.apiWorkspaces)
-	mux.HandleFunc("/api/workspaces/", s.apiWorkspaces)
-	mux.HandleFunc("/api/tasks", s.apiTasks)
-	mux.HandleFunc("/api/tasks/", s.apiTasks)
-	mux.HandleFunc("/", s.staticOrSPA)
+	mux.HandleFunc("/api/", s.apiRouter)
+	mux.HandleFunc("/", s.rootHandler)
 
 	addr := listenAddr(s.cfg.Port)
 	srv := &http.Server{Addr: addr, Handler: mux}

@@ -11,6 +11,7 @@ import (
 type ServerConfig struct {
 	Port       int
 	StaticDir  string
+	Prefix     string   // 安装前缀，用于 VERSION、initial_credentials 等
 	TLSEnabled bool
 	TLSCert    string
 	TLSKey     string
@@ -63,6 +64,7 @@ func defaultServerConfig(prefix string) *ServerConfig {
 	return &ServerConfig{
 		Port:      port,
 		StaticDir: staticDir,
+		Prefix:    prefix,
 	}
 }
 

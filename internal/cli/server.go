@@ -33,6 +33,9 @@ func runServer(cmd *cobra.Command, args []string) error {
 	if err == nil {
 		defer db.Close()
 		srv.SetDB(db, dbPath)
+		if err := control.EnsureFirstUser(db, prefix); err != nil {
+			return err
+		}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

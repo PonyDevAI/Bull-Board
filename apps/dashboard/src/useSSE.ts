@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { getApiBase } from "@/api";
+import { getApiBase, authMe } from "@/api";
 
 type EventHandler = (data: unknown) => void;
 
@@ -12,7 +12,12 @@ export function useSSE(onTaskChanged?: EventHandler, onRunChanged?: EventHandler
   useEffect(() => {
     const base = getApiBase();
     const url = base ? `${base}/api/events` : "/api/events";
-    const es = new EventSource(url);
+    const es = new EventSource(url, { withCredentials: true });
+    es.onerror = () => {
+      authMe().then((u) => {
+        if (!u) window.location.href = "/login?returnTo=" + encodeURIComponent(window.location.pathname);
+      });
+    };
     es.onmessage = (e) => {
       if (e.data && e.data.startsWith("{")) {
         try {

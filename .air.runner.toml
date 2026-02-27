@@ -4,7 +4,8 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/bb-runner ./cmd/bb-runner"
+# 使用国内代理拉取依赖，海外环境可改为 cmd = "go build -o ./tmp/bb-runner ./cmd/bb-runner"
+cmd = "GOPROXY=https://goproxy.cn,direct go build -o ./tmp/bb-runner ./cmd/bb-runner"
 bin = "tmp/bb-runner"
 full_bin = "PREFIX=/tmp/bb-dev ./tmp/bb-runner"
 include_ext = ["go", "tpl", "tmpl", "html"]
