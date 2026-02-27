@@ -1,0 +1,52 @@
+---
+description: UI 按钮与表单控件尺寸 / 聚焦样式规范
+alwaysApply: true
+---
+
+# UI 按钮与表单控件规范
+
+## 通用原则
+
+- 所有新 UI 组件在实现时，应优先复用已有样式约定（按钮高度、内边距、focus 样式），保持 Dashboard 视觉与交互一致。
+- 表单控件在聚焦时必须突出当前操作元素，并与主题色（primary 绿色）一致。
+
+## 按钮尺寸
+
+- **主按钮（primary，主流程操作）**
+  - 高度：`h-10` 或 `min-h-[44px]`
+  - 内边距：`px-4`
+  - 字号：`text-sm`
+  - 类似：登录按钮、主要 CTA。
+
+- **次按钮（secondary，设置/次级操作）**
+  - 高度：`h-8`
+  - 内边距：`px-3` 或 `px-3.5`
+  - 字号：`text-sm`
+  - 典型场景：Settings 页面右侧小按钮（如「保存」「设置」「导出」等）。
+
+在 Settings 等配置类页面，优先使用 **次按钮尺寸**，只在需要特别强调的操作时用主按钮尺寸。
+
+## 输入框与搜索框
+
+- 默认样式（包括占位只读输入）应遵循：
+  - 背景：`bg-background` 或 `bg-muted/40`
+  - 边框：`border border-border`（或 `/60`）
+  - 字体颜色：`text-foreground`
+  - 占位符：`placeholder:text-muted-foreground`
+
+- 聚焦状态（包括普通 input、搜索框、只读占位输入）统一使用：
+  - `outline-none`
+  - `caret-primary`
+  - `focus:border-primary`
+  - `focus:ring-1`
+  - `focus:ring-primary`
+
+在实现新输入框时，如果没有特殊需求，直接复用上述组合，避免出现黑色默认焦点边框。
+
+## Settings 行间距
+
+- Settings 行（`SettingRow` 一类）默认上下内边距：
+  - 基本：`py-3`
+  - 桌面端：`md:py-3.5`
+- 若新增设置项，保持与现有行一致，不要使用更小的 `py-2`，以免视觉过于拥挤。
+

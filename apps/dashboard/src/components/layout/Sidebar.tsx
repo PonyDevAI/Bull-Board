@@ -328,9 +328,8 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
         )}
       >
         {!collapsed && (
-          <button
-            type="button"
-            onClick={() => setUpdateModalOpen(true)}
+          <Link
+            to="/settings?tab=updates"
             className="flex min-h-[32px] min-w-[44px] items-center gap-1 rounded text-xs text-muted-foreground hover:text-foreground"
             title="版本与更新"
           >
@@ -340,7 +339,7 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
                 更新
               </span>
             )}
-          </button>
+          </Link>
         )}
         <div className="flex shrink-0 items-center gap-0.5">
           <ThemeToggle compact />
