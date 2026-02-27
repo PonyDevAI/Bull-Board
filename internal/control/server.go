@@ -214,6 +214,20 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.events(w, r)
 		return
 	}
+	if path == "/api/system/logs" && r.Method == http.MethodGet {
+		if !s.sessionRequired(w, r) {
+			return
+		}
+		s.systemLogs(w, r)
+		return
+	}
+	if path == "/api/system/logs/stream" && r.Method == http.MethodGet {
+		if !s.sessionRequired(w, r) {
+			return
+		}
+		s.systemLogsStream(w, r)
+		return
+	}
 	// 以下需要 session 或 API key
 	if path == "/api/auth/me" && r.Method == http.MethodGet {
 		s.authMe(w, r)

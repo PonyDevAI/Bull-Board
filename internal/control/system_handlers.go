@@ -1,11 +1,15 @@
 package control
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -167,6 +171,155 @@ func (s *Server) systemUpgradePlan(w http.ResponseWriter, r *http.Request) {
 	version := strings.TrimSpace(body.Version)
 	command := "curl -fsSL https://raw.githubusercontent.com/trustpoker/bull-borad/main/infra/deploy/install.sh | bash -s -- upgrade --version " + version
 	writeJSON(w, map[string]any{"mode": "manual", "command": command})
+}
+
+type systemLogsResponse struct {
+	Unit    string `json:"unit"`
+	Lines   int    `json:"lines"`
+	Content string `json:"content"`
+}
+
+// systemLogs 返回指定 unit 的最近 N 行日志
+func (s *Server) systemLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet || r.URL.Path != "/api/system/logs" {
+		http.NotFound(w, r)
+		return
+	}
+	unitParam := r.URL.Query().Get("unit")
+	if unitParam == "" {
+		unitParam = "control"
+	}
+	var unit string
+	switch unitParam {
+	case "control":
+		unit = "bb"
+	case "runner":
+		unit = "bb-runner"
+	default:
+		writeJSONError(w, "invalid unit", http.StatusBadRequest)
+		return
+	}
+	const defaultLines = 200
+	const maxLines = 2000
+	lines := defaultLines
+	if v := strings.TrimSpace(r.URL.Query().Get("lines")); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n <= 0 {
+			writeJSONError(w, "invalid lines", http.StatusBadRequest)
+			return
+		}
+		if n > maxLines {
+			n = maxLines
+		}
+		lines = n
+	}
+
+	ctx := r.Context()
+	cmd := exec.CommandContext(ctx, "journalctl", "-u", unit, "-n", fmt.Sprintf("%d", lines), "--no-pager")
+	out, err := cmd.Output()
+	if err != nil {
+		writeJSONError(w, fmt.Sprintf("journalctl: %v", err), http.StatusInternalServerError)
+		return
+	}
+	content := string(out)
+	if q := strings.TrimSpace(r.URL.Query().Get("query")); q != "" {
+		var filtered []string
+		for _, line := range strings.Split(content, "\n") {
+			if strings.Contains(line, q) {
+				filtered = append(filtered, line)
+			}
+		}
+		content = strings.Join(filtered, "\n")
+	}
+	resp := systemLogsResponse{
+		Unit:    unitParam,
+		Lines:   lines,
+		Content: content,
+	}
+	writeJSON(w, resp)
+}
+
+// systemLogsStream 使用 SSE 实时输出 journalctl -f 日志
+func (s *Server) systemLogsStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet || r.URL.Path != "/api/system/logs/stream" {
+		http.NotFound(w, r)
+		return
+	}
+	unitParam := r.URL.Query().Get("unit")
+	if unitParam == "" {
+		unitParam = "control"
+	}
+	var unit string
+	switch unitParam {
+	case "control":
+		unit = "bb"
+	case "runner":
+		unit = "bb-runner"
+	default:
+		writeJSONError(w, "invalid unit", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	flusher.Flush()
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "journalctl", "-u", unit, "-f", "-n", "50", "--no-pager")
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		writeJSONError(w, fmt.Sprintf("journalctl pipe: %v", err), http.StatusInternalServerError)
+		return
+	}
+	cmd.Stderr = cmd.Stdout
+
+	if err := cmd.Start(); err != nil {
+		writeJSONError(w, fmt.Sprintf("journalctl start: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line == "" {
+				continue
+			}
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", line)
+			flusher.Flush()
+		}
+	}()
+
+	heartbeat := time.NewTicker(15 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			_ = cmd.Process.Kill()
+			return
+		case <-done:
+			_ = cmd.Wait()
+			return
+		case <-heartbeat.C:
+			_, _ = w.Write([]byte(": heartbeat\n\n"))
+			flusher.Flush()
+		}
+	}
 }
 
 func fetchLatestRelease() (*githubReleaseResponse, error) {

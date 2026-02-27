@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { DashboardHome } from "@/pages/DashboardHome";
 import { KanbanPage } from "@/pages/KanbanPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { LogsPage } from "@/pages/LogsPage";
 import { LoginPage } from "@/pages/LoginPage";
 
 function Home() {
@@ -203,7 +204,7 @@ export default function App() {
           <Route path="models" element={<div className="text-muted-foreground p-4">Models 占位</div>} />
           <Route path="roles" element={<div className="text-muted-foreground p-4">Roles & Routing 占位</div>} />
           <Route path="policies" element={<div className="text-muted-foreground p-4">Policies 占位</div>} />
-          <Route path="logs" element={<div className="text-muted-foreground p-4">Logs 占位</div>} />
+          <Route path="logs" element={<LogsPage />} />
           <Route path="audit" element={<div className="text-muted-foreground p-4">Audit 占位</div>} />
           <Route path="alerts" element={<div className="text-muted-foreground p-4">Alerts 占位</div>} />
         </Route>

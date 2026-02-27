@@ -400,7 +400,7 @@ function UpdatesSection() {
         </button>
       </SettingRow>
 
-      {hasUpdate && latest && (
+          {hasUpdate && latest && (
         <>
           <div className="rounded-lg border border-border bg-muted/30 p-4">
             <p className="mb-2 text-sm font-medium text-foreground">
@@ -435,7 +435,11 @@ function UpdatesSection() {
           </SettingRow>
           <SettingRow
             label="升级"
-            description="复制下方命令到服务器执行即可升级。"
+            description={
+              copyDone
+                ? "命令已复制到剪贴板，升级完成后可到「日志」页观察 bb.service 重启日志。"
+                : "复制下方命令到服务器执行即可升级。"
+            }
             action={
               <button
                 type="button"
@@ -447,6 +451,19 @@ function UpdatesSection() {
             }
           >
             <span className="text-muted-foreground" />
+          </SettingRow>
+          <SettingRow
+            label="升级后观察"
+            description="升级完成后，可在 Control 日志中确认服务重启与迁移输出。"
+            action={
+              <Link to="/dashboard/logs?unit=control" className={btnSecondary}>
+                打开 Control 日志
+              </Link>
+            }
+          >
+            <span className="text-muted-foreground">
+              将在新标签中固定 Control 单元，用于观察升级过程。
+            </span>
           </SettingRow>
         </>
       )}
@@ -599,9 +616,24 @@ export function SettingsPage() {
               <SettingRow
                 label="运行与资源"
                 description="Runner 列表与资源配置（占位/已实现则展示）。"
-                action={<button type="button" disabled className={btnSecondary}>管理</button>}
+                action={
+                  <button type="button" disabled className={btnSecondary}>
+                    管理
+                  </button>
+                }
               >
                 <PlaceholderInput value="暂无" />
+              </SettingRow>
+              <SettingRow
+                label="运行日志"
+                description="打开日志查看器，观察 Control 与 Runner 的 systemd 日志。"
+                action={
+                  <Link to="/dashboard/logs" className={btnSecondary}>
+                    打开日志查看器
+                  </Link>
+                }
+              >
+                <PlaceholderInput value="bb.service / bb-runner.service" />
               </SettingRow>
             </div>
           )}

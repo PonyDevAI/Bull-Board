@@ -134,6 +134,27 @@ export async function getSystemUpdate(): Promise<SystemUpdate> {
   return handleResponse<SystemUpdate>(r);
 }
 
+export type LogsUnit = "control" | "runner";
+
+export type SystemLogsResponse = {
+  unit: LogsUnit;
+  lines: number;
+  content: string;
+};
+
+export async function getSystemLogs(unit: LogsUnit, lines: number, query?: string): Promise<SystemLogsResponse> {
+  const params = new URLSearchParams();
+  params.set("unit", unit);
+  if (lines > 0) {
+    params.set("lines", String(lines));
+  }
+  if (query) {
+    params.set("query", query);
+  }
+  const r = await fetch(API + "/system/logs" + "?" + params.toString(), defaultFetchOptions);
+  return handleResponse<SystemLogsResponse>(r);
+}
+
 export async function ignoreVersion(version: string): Promise<{ ok: boolean; ignored_versions: string[] }> {
   const r = await fetch(API + "/system/update/ignore", {
     ...defaultFetchOptions,
