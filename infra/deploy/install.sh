@@ -61,8 +61,9 @@ download_assets() {
   echo "下载 $ASSET ..."
   (cd "$tmpdir" && curl -fsSL -O "$base/$ASSET" -O "$base/SHA256SUMS") || { echo "下载失败"; return 1; }
   if [ -f "$tmpdir/SHA256SUMS" ]; then
-    if grep -q "$ASSET" "$tmpdir/SHA256SUMS"; then
-      (cd "$tmpdir" && grep "$ASSET" SHA256SUMS | sha256sum -c - 2>/dev/null) || (cd "$tmpdir" && grep "$ASSET" SHA256SUMS | shasum -a 256 -c - 2>/dev/null) || { echo "SHA256 校验失败"; return 1; }
+    if grep -q " $ASSET\$" "$tmpdir/SHA256SUMS"; then
+      (cd "$tmpdir" && grep " $ASSET\$" SHA256SUMS | sha256sum -c - 2>/dev/null) || \
+      (cd "$tmpdir" && grep " $ASSET\$" SHA256SUMS | shasum -a 256 -c - 2>/dev/null) || { echo "SHA256 校验失败"; return 1; }
     else
       echo "未在 SHA256SUMS 中找到 $ASSET"
       return 1
@@ -268,9 +269,9 @@ case "$SUBCOMMAND" in
         trap 'rm -rf "$TMP"' EXIT
         download_assets "$VERSION" "$TMP" || { echo "下载失败"; exit 1; }
         mkdir -p "$PREFIX/versions/$VERSION"
-        local arch; arch="$(detect_arch)"
-        local tarball="bullboard-all-linux-$arch-$VERSION.tar.gz"
-        tar -xzf "$TMP/$tarball" -C "$PREFIX/versions/$VERSION" || { echo "解压失败"; exit 1; }
+        arch="$(detect_arch)"
+        ASSET="bullboard-all-linux-$arch-$VERSION.tar.gz"
+        tar -xzf "$TMP/$ASSET" -C "$PREFIX/versions/$VERSION" || { echo "解压失败"; exit 1; }
       fi
     fi
     if [ "$MODE" = "local" ]; then install_local; else install_docker; fi
