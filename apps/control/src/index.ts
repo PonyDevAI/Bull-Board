@@ -12,7 +12,35 @@ import actionsRoutes from "./routes/actions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const app = Fastify({ logger: true });
+// TLS：从 BB_CONFIG 或 PREFIX/config/bb.json 读取，同端口 8888
+function loadTlsConfig(): { key: Buffer; cert: Buffer } | null {
+  const configPath =
+    process.env.BB_CONFIG ||
+    (process.env.PREFIX ? `${process.env.PREFIX}/config/bb.json` : null);
+  if (!configPath || !fs.existsSync(configPath)) return null;
+  const raw = fs.readFileSync(configPath, "utf8");
+  let config: { tls?: { enabled?: boolean; certPath?: string; keyPath?: string } };
+  try {
+    config = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!config?.tls?.enabled || !config.tls.certPath || !config.tls.keyPath)
+    return null;
+  if (!fs.existsSync(config.tls.certPath) || !fs.existsSync(config.tls.keyPath))
+    return null;
+  return {
+    key: fs.readFileSync(config.tls.keyPath),
+    cert: fs.readFileSync(config.tls.certPath),
+  };
+}
+
+const tls = loadTlsConfig();
+
+const app = Fastify({
+  logger: true,
+  ...(tls ? { https: tls as any } : {}),
+});
 
 const DEFAULT_PORT = 8888;
 
@@ -52,38 +80,10 @@ if (staticRootExists) {
   });
 }
 
-// TLS：从 BB_CONFIG 或 PREFIX/config/bb.json 读取，同端口 8888
-function loadTlsConfig(): { key: Buffer; cert: Buffer } | null {
-  const configPath =
-    process.env.BB_CONFIG ||
-    (process.env.PREFIX ? `${process.env.PREFIX}/config/bb.json` : null);
-  if (!configPath || !fs.existsSync(configPath)) return null;
-  const raw = fs.readFileSync(configPath, "utf8");
-  let config: { tls?: { enabled?: boolean; certPath?: string; keyPath?: string } };
-  try {
-    config = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!config?.tls?.enabled || !config.tls.certPath || !config.tls.keyPath)
-    return null;
-  if (!fs.existsSync(config.tls.certPath) || !fs.existsSync(config.tls.keyPath))
-    return null;
-  return {
-    key: fs.readFileSync(config.tls.keyPath),
-    cert: fs.readFileSync(config.tls.certPath),
-  };
-}
-
 const start = async () => {
   try {
     const port = Number(process.env.PORT) || DEFAULT_PORT;
-    const tls = loadTlsConfig();
-    if (tls) {
-      await app.listen({ port, host: "0.0.0.0", https: tls });
-    } else {
-      await app.listen({ port, host: "0.0.0.0" });
-    }
+    await app.listen({ port, host: "0.0.0.0" });
   } catch (err) {
     app.log.error(err);
     process.exit(1);
