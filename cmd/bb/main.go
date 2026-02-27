@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/trustpoker/bull-borad/internal/cli"
+	"github.com/PonyDevAI/Bull-Board/internal/cli"
 )
 
 func main() {

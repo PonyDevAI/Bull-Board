@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/trustpoker/bull-borad/internal/control"
+	"github.com/PonyDevAI/Bull-Board/internal/control"
 	"github.com/spf13/cobra"
 )
 

@@ -677,7 +677,7 @@ function AboutSection() {
       </SettingRow>
       <SettingRow label="链接" description="官网与文档（占位）。">
         <a
-          href="https://github.com/trustpoker/bull-borad"
+          href="https://github.com/PonyDevAI/Bull-Board"
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary underline hover:no-underline"

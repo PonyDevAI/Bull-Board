@@ -2,6 +2,7 @@ package control
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,11 +13,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 const (
-	githubReleasesURL = "https://api.github.com/repos/trustpoker/bull-borad/releases/latest"
+	githubReleasesURL = "https://api.github.com/repos/PonyDevAI/Bull-Board/releases/latest"
 	updateCacheTTL    = 10 * time.Minute
 )
 
@@ -169,7 +171,7 @@ func (s *Server) systemUpgradePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	version := strings.TrimSpace(body.Version)
-	command := "curl -fsSL https://raw.githubusercontent.com/trustpoker/bull-borad/main/infra/deploy/install.sh | bash -s -- upgrade --version " + version
+	command := "curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/deploy/install.sh | bash -s -- upgrade --version " + version
 	writeJSON(w, map[string]any{"mode": "manual", "command": command})
 }
 
@@ -179,26 +181,37 @@ type systemLogsResponse struct {
 	Content string `json:"content"`
 }
 
-// systemLogs 返回指定 unit 的最近 N 行日志
+// normalizeSince 将简写映射为 journalctl 可识别的 since 文本
+func normalizeSince(s string) string {
+	s = strings.TrimSpace(s)
+	switch s {
+	case "":
+		return ""
+	case "15m":
+		return "15 minutes ago"
+	case "30m":
+		return "30 minutes ago"
+	case "1h":
+		return "1 hour ago"
+	case "24h":
+		return "24 hours ago"
+	default:
+		return s
+	}
+}
+
+// systemLogs 返回 Control(unit=bb) 的最近 N 行日志
 func (s *Server) systemLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || r.URL.Path != "/api/system/logs" {
 		http.NotFound(w, r)
 		return
 	}
 	unitParam := r.URL.Query().Get("unit")
-	if unitParam == "" {
-		unitParam = "control"
-	}
-	var unit string
-	switch unitParam {
-	case "control":
-		unit = "bb"
-	case "runner":
-		unit = "bb-runner"
-	default:
+	if unitParam != "" && unitParam != "control" {
 		writeJSONError(w, "invalid unit", http.StatusBadRequest)
 		return
 	}
+	unit := "bb"
 	const defaultLines = 200
 	const maxLines = 2000
 	lines := defaultLines
@@ -214,25 +227,59 @@ func (s *Server) systemLogs(w http.ResponseWriter, r *http.Request) {
 		lines = n
 	}
 
+	since := normalizeSince(r.URL.Query().Get("since"))
+	query := strings.TrimSpace(r.URL.Query().Get("query"))
+
 	ctx := r.Context()
-	cmd := exec.CommandContext(ctx, "journalctl", "-u", unit, "-n", fmt.Sprintf("%d", lines), "--no-pager")
-	out, err := cmd.Output()
+	args := []string{"-u", unit, "-n", fmt.Sprintf("%d", lines), "--no-pager", "-o", "short-iso"}
+	if since != "" {
+		args = append(args, "--since", since)
+	}
+	if query != "" {
+		args = append(args, "--grep", query)
+	}
+
+	cmd := exec.CommandContext(ctx, "journalctl", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// 若 grep 不被支持则回退到本地 contains 过滤
+		if query != "" && bytes.Contains(out, []byte("unrecognized option")) {
+			argsFallback := []string{"-u", unit, "-n", fmt.Sprintf("%d", lines), "--no-pager", "-o", "short-iso"}
+			if since != "" {
+				argsFallback = append(argsFallback, "--since", since)
+			}
+			cmd2 := exec.CommandContext(ctx, "journalctl", argsFallback...)
+			out2, err2 := cmd2.CombinedOutput()
+			if err2 != nil {
+				writeJSONError(w, fmt.Sprintf("journalctl: %v", err2), http.StatusInternalServerError)
+				return
+			}
+			content := string(out2)
+			var filtered []string
+			for _, line := range strings.Split(content, "\n") {
+				if strings.Contains(line, query) {
+					filtered = append(filtered, line)
+				}
+			}
+			content = strings.Join(filtered, "\n")
+			resp := systemLogsResponse{
+				Unit:    "control",
+				Lines:   lines,
+				Content: content,
+			}
+			writeJSON(w, resp)
+			return
+		}
+		writeJSONError(w, fmt.Sprintf("journalctl: %v", err), http.StatusInternalServerError)
+		return
+	}
 	if err != nil {
 		writeJSONError(w, fmt.Sprintf("journalctl: %v", err), http.StatusInternalServerError)
 		return
 	}
 	content := string(out)
-	if q := strings.TrimSpace(r.URL.Query().Get("query")); q != "" {
-		var filtered []string
-		for _, line := range strings.Split(content, "\n") {
-			if strings.Contains(line, q) {
-				filtered = append(filtered, line)
-			}
-		}
-		content = strings.Join(filtered, "\n")
-	}
 	resp := systemLogsResponse{
-		Unit:    unitParam,
+		Unit:    "control",
 		Lines:   lines,
 		Content: content,
 	}
@@ -246,19 +293,19 @@ func (s *Server) systemLogsStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	unitParam := r.URL.Query().Get("unit")
-	if unitParam == "" {
-		unitParam = "control"
-	}
-	var unit string
-	switch unitParam {
-	case "control":
-		unit = "bb"
-	case "runner":
-		unit = "bb-runner"
-	default:
+	if unitParam != "" && unitParam != "control" {
 		writeJSONError(w, "invalid unit", http.StatusBadRequest)
 		return
 	}
+	unit := "bb"
+
+	current := atomic.AddInt32(&s.logStreamConns, 1)
+	if current > 3 {
+		atomic.AddInt32(&s.logStreamConns, -1)
+		writeJSONError(w, "too many log streams", http.StatusTooManyRequests)
+		return
+	}
+	defer atomic.AddInt32(&s.logStreamConns, -1)
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -275,7 +322,18 @@ func (s *Server) systemLogsStream(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "journalctl", "-u", unit, "-f", "-n", "50", "--no-pager")
+	since := normalizeSince(r.URL.Query().Get("since"))
+	query := strings.TrimSpace(r.URL.Query().Get("query"))
+
+	args := []string{"-u", unit, "-f", "-n", "50", "--no-pager", "-o", "short-iso"}
+	if since != "" {
+		args = append(args, "--since", since)
+	}
+	if query != "" {
+		args = append(args, "--grep", query)
+	}
+
+	cmd := exec.CommandContext(ctx, "journalctl", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		writeJSONError(w, fmt.Sprintf("journalctl pipe: %v", err), http.StatusInternalServerError)

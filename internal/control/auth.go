@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/trustpoker/bull-borad/internal/common"
+	"github.com/PonyDevAI/Bull-Board/internal/common"
 )
 
 const (

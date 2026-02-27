@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/trustpoker/bull-borad/internal/common"
-	"github.com/trustpoker/bull-borad/internal/control"
+	"github.com/PonyDevAI/Bull-Board/internal/common"
+	"github.com/PonyDevAI/Bull-Board/internal/control"
 	"github.com/spf13/cobra"
 )
 

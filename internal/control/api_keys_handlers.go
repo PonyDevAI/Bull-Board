@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trustpoker/bull-borad/internal/common"
+	"github.com/PonyDevAI/Bull-Board/internal/common"
 )
 
 func (s *Server) apiKeysList(w http.ResponseWriter, r *http.Request) {

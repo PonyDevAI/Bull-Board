@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, Play, Square, RefreshCw, Trash2, ChevronDown } from "lucide-react";
-import { getApiBase, getSystemLogs, authMe, type LogsUnit } from "@/api";
+import { Search, Play, Square, RefreshCw, Trash2, ChevronDown, Copy } from "lucide-react";
+import { getApiBase, getSystemLogs, authMe } from "@/api";
 import { cn } from "@/lib/utils";
 
 const btnPrimary =
@@ -11,21 +11,30 @@ const btnSecondary =
 
 export function LogsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialUnit = (searchParams.get("unit") as LogsUnit) || "control";
-  const [unit, setUnit] = useState<LogsUnit>(initialUnit === "runner" ? "runner" : "control");
   const [lines, setLines] = useState<number>(200);
   const [query, setQuery] = useState("");
+  const [since, setSince] = useState<string>("30m");
   const [content, setContent] = useState("");
+  const [lineCount, setLineCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [tailing, setTailing] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [copyDone, setCopyDone] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const u = searchParams.get("unit");
-    if (u === "runner" || u === "control") {
-      setUnit(u);
+    const unit = searchParams.get("unit");
+    if (unit && unit !== "control") {
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.set("unit", "control");
+        return p;
+      });
+    }
+    const s = searchParams.get("since");
+    if (s) {
+      setSince(s);
     }
   }, [searchParams]);
 
@@ -37,15 +46,18 @@ export function LogsPage() {
   }, [content, autoScroll]);
 
   useEffect(() => {
-    loadOnce();
+    void loadOnce();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unit, lines]);
+  }, [lines, since]);
 
   const loadOnce = async () => {
     setLoading(true);
     try {
-      const res = await getSystemLogs(unit, lines, query || undefined);
-      setContent(res.content || "");
+      const res = await getSystemLogs(lines, query || undefined, since || undefined);
+      const text = res.content || "";
+      setContent(text);
+      const cnt = text ? text.split("\n").filter((l) => l).length : 0;
+      setLineCount(cnt);
     } catch {
       // ignore
     } finally {
@@ -64,7 +76,11 @@ export function LogsPage() {
   const startTail = () => {
     stopTail();
     const base = getApiBase();
-    const url = (base || "") + `/api/system/logs/stream?unit=${unit}`;
+    const params = new URLSearchParams();
+    params.set("unit", "control");
+    if (since) params.set("since", since);
+    if (query) params.set("query", query);
+    const url = (base || "") + `/api/system/logs/stream?${params.toString()}`;
     const es = new EventSource(url, { withCredentials: true });
     eventSourceRef.current = es;
     setTailing(true);
@@ -97,51 +113,25 @@ export function LogsPage() {
     }
   };
 
-  const handleChangeUnit = (next: LogsUnit) => {
-    setSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      p.set("unit", next);
-      return p;
-    });
-    setUnit(next);
-    setContent("");
-    stopTail();
-  };
+  const displayContent = content;
 
-  const filteredLines = content
-    .split("\n")
-    .filter((line) => (query ? line.toLowerCase().includes(query.toLowerCase()) : true));
-  const displayContent = filteredLines.join("\n");
+  const currentCurl = useMemo(() => {
+    const base = getApiBase();
+    const origin = base || window.location.origin;
+    const params = new URLSearchParams();
+    params.set("lines", String(lines));
+    if (since) params.set("since", since);
+    if (query) params.set("query", query);
+    const url = `${origin}/api/system/logs?${params.toString()}`;
+    return `curl -b cookie.txt "${url}"`;
+  }, [lines, since, query]);
 
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 md:flex-row md:items-center md:justify-between md:p-4">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-border bg-background p-0.5 text-xs md:text-sm">
-            <button
-              type="button"
-              onClick={() => handleChangeUnit("control")}
-              className={cn(
-                "inline-flex h-8 items-center justify-center rounded-md px-3 font-medium",
-                unit === "control"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              Control
-            </button>
-            <button
-              type="button"
-              onClick={() => handleChangeUnit("runner")}
-              className={cn(
-                "inline-flex h-8 items-center justify-center rounded-md px-3 font-medium",
-                unit === "runner"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              Runner
-            </button>
+          <div className="inline-flex rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground md:text-sm">
+            Control · bb.service
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground md:text-sm">
             <span>最近</span>
@@ -169,6 +159,20 @@ export function LogsPage() {
           </label>
         </div>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground md:text-sm">
+            <span>时间范围</span>
+            <select
+              value={since}
+              onChange={(e) => setSince(e.target.value)}
+              className="h-8 rounded border border-border bg-background px-2 text-xs text-foreground outline-none caret-primary focus:border-primary focus:ring-1 focus:ring-primary md:h-8 md:text-sm"
+            >
+              <option value="15m">近 15 分钟</option>
+              <option value="30m">近 30 分钟</option>
+              <option value="1h">近 1 小时</option>
+              <option value="24h">近 24 小时</option>
+              <option value="">不限制</option>
+            </select>
+          </div>
           <div className="relative min-w-[180px] max-w-xs flex-1">
             <input
               type="search"
@@ -209,6 +213,22 @@ export function LogsPage() {
             <Trash2 className="mr-1 h-3.5 w-3.5" />
             清空
           </button>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(currentCurl);
+                setCopyDone(true);
+                setTimeout(() => setCopyDone(false), 2000);
+              } catch {
+                // ignore
+              }
+            }}
+            className={btnSecondary}
+          >
+            <Copy className="mr-1 h-3.5 w-3.5" />
+            {copyDone ? "已复制 curl" : "复制 curl"}
+          </button>
         </div>
       </div>
 
@@ -217,7 +237,7 @@ export function LogsPage() {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span>{unit === "control" ? "bb.service" : "bb-runner.service"}</span>
+              <span>bb.service</span>
             </span>
             <span className="hidden md:inline">日志来源：systemd / journalctl</span>
           </div>
@@ -225,7 +245,7 @@ export function LogsPage() {
             type="button"
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            <span>行数：{filteredLines.length}</span>
+            <span>行数：{lineCount}</span>
             <ChevronDown className="h-3 w-3" />
           </button>
         </div>

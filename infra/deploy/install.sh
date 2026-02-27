@@ -7,7 +7,7 @@
 set -e
 
 # 一条命令安装：curl -fsSL <INSTALL_URL> | bash  可设 VERSION MODE COMPONENT PREFIX PORT
-GITHUB_REPO="${GITHUB_REPO:-trustpoker/bull-borad}"
+GITHUB_REPO="${GITHUB_REPO:-PonyDevAI/Bull-Board}"
 PREFIX="${PREFIX:-/opt/bull-board}"
 MODE="${MODE:-local}"
 COMPONENT="${COMPONENT:-all}"

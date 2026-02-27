@@ -1,4 +1,4 @@
-module github.com/trustpoker/bull-borad
+module github.com/PonyDevAI/Bull-Board
 
 go 1.21
 

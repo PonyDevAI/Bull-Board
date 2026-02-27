@@ -7,7 +7,7 @@
 ## 一条命令安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/trustpoker/bull-borad/main/infra/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/deploy/install.sh | bash
 ```
 
 - **默认**：local 模式、全部组件（bb + bb-runner）、最新版本、前缀 `/opt/bull-board`、端口 **6666**。

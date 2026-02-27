@@ -134,23 +134,23 @@ export async function getSystemUpdate(): Promise<SystemUpdate> {
   return handleResponse<SystemUpdate>(r);
 }
 
-export type LogsUnit = "control" | "runner";
-
 export type SystemLogsResponse = {
-  unit: LogsUnit;
+  unit: "control";
   lines: number;
   content: string;
 };
 
-export async function getSystemLogs(unit: LogsUnit, lines: number, query?: string): Promise<SystemLogsResponse> {
+export async function getSystemLogs(lines: number, query?: string, since?: string): Promise<SystemLogsResponse> {
   const params = new URLSearchParams();
-  params.set("unit", unit);
   if (lines > 0) {
     params.set("lines", String(lines));
   }
   if (query) {
     params.set("query", query);
   }
+   if (since) {
+     params.set("since", since);
+   }
   const r = await fetch(API + "/system/logs" + "?" + params.toString(), defaultFetchOptions);
   return handleResponse<SystemLogsResponse>(r);
 }

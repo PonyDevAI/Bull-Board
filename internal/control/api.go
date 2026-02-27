@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trustpoker/bull-borad/internal/common"
+	"github.com/PonyDevAI/Bull-Board/internal/common"
 )
 
 // apiWorkspaces 处理 GET/POST /api/workspaces、GET /api/workspaces/:id

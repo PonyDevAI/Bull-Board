@@ -5,7 +5,7 @@ Web 看板：管理改代码任务，通过 SQLite 队列表派发给 bb-runner 
 ## 一条命令安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/trustpoker/bull-borad/main/infra/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/deploy/install.sh | bash
 ```
 
 默认：本机（local）模式、全部组件、最新版本、前缀 `/opt/bull-board`、端口 **6666**。安装完成后访问：

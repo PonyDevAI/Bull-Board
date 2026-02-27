@@ -13,16 +13,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/trustpoker/bull-borad/internal/common"
+	"github.com/PonyDevAI/Bull-Board/internal/common"
 )
 
 // Server 提供 /api/health、/api/events(SSE)、静态托管与 SPA fallback
 type Server struct {
-	cfg      *common.ServerConfig
-	startAt  time.Time
-	sseConns sync.Map
-	db       *sql.DB
-	dbPath   string
+	cfg            *common.ServerConfig
+	startAt        time.Time
+	sseConns       sync.Map
+	db             *sql.DB
+	dbPath         string
+	logStreamConns int32
 }
 
 func NewServer(cfg *common.ServerConfig) *Server {

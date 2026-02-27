@@ -279,7 +279,7 @@ export default function App() {
             <Route path="/workspaces" element={<Workspaces />} />
             <Route path="/board" element={<Board />} />
             <Route path="/tasks/:id" element={<TaskDetail />} />
-            <Route path="/logs" element={<div className="p-4 text-slate-500 dark:text-slate-400">系统日志（敬请期待）</div>} />
+            <Route path="/logs" element={<Navigate to="/dashboard/logs" replace />} />
           </Routes>
         </main>
       </div>

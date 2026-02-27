@@ -4,7 +4,7 @@ package main
 import (
 	"os"
 
-	"github.com/trustpoker/bull-borad/internal/runner"
+	"github.com/PonyDevAI/Bull-Board/internal/runner"
 )
 
 func main() {
