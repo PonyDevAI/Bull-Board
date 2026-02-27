@@ -11,7 +11,9 @@ COPY apps/dashboard/tsconfig.json apps/dashboard/tsconfig.node.json apps/dashboa
 COPY apps/dashboard/index.html ./
 COPY apps/dashboard/postcss.config.js apps/dashboard/tailwind.config.js ./
 COPY apps/dashboard/src ./src
-COPY apps/dashboard/public ./public 2>/dev/null || true
+
+# public 目录是可选的：存在时复制，不存在时跳过
+RUN if [ -d apps/dashboard/public ]; then cp -r apps/dashboard/public ./public; fi
 RUN npm run build
 
 FROM nginx:alpine
