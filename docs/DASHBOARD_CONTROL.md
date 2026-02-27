@@ -14,9 +14,14 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
 
 ## 2. 开发环境（本地联调）
 
-1. 先启动 **Control**（提供 API）：
+1. 先启动 **Control**（Go 版 bb server，提供 API）：
    ```bash
-   cd apps/control && pnpm dev
+   # 构建一次二进制
+   go build -o bb ./cmd/bb
+   # 或使用 Air 热重载：~/go/bin/air
+
+   # 本地直接起服务（默认端口 8888）
+   ./bb server --prefix /tmp/bb-test
    # 监听 http://localhost:8888
    ```
 2. 再启动 **Dashboard**（Vite 会做代理）：
@@ -28,13 +33,11 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
 
 ## 3. 生产环境（同源部署，推荐）
 
-- 使用 **Control 托管 Dashboard 静态资源**：
-  1. 构建：`cd apps/dashboard && pnpm build`
-  2. 启动 Control 时指定静态目录：
+- 使用 **Go bb server 托管 Dashboard 静态资源**：
+  1. 构建前端：`cd apps/dashboard && pnpm build`
+  2. 使用 all 包或自行构建，将 `apps/dashboard/dist` 放到 `PREFIX/current/dashboard/dist`，或设置：
      ```bash
-     STATIC_DIR=../dashboard/dist pnpm start
-     # 或
-     DASHBOARD_DIST=/path/to/dashboard/dist pnpm start
+     DASHBOARD_DIST=/path/to/dashboard/dist ./bb server --prefix /opt/bull-board
      ```
   3. 同一端口（默认 8888）既提供 `/api`，又提供前端页面；Dashboard 请求 `/api` 为同源，无需配置。
 

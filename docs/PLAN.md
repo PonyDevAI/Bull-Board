@@ -11,7 +11,7 @@ Done/Failed 后通过 Actions 完成闭环：
 - Failed：Retry、Continue Fix、Re-plan
 
 ## 1. 组件
-1) Console API（Fastify + TS）
+1) Console API（Go / bb server）
 - 任务/运行/产物/消息 API
 - 状态机与编排 Orchestrator
 - SQLite：作为唯一数据库（同时存队列表 jobs）
@@ -138,7 +138,7 @@ Done/Failed Actions（手动触发）：
 
 ---
 
-## 5. Console API（Fastify）接口（v0.1）
+## 5. Console API（Go / bb server）接口（v0.1）
 Workspace:
 - GET /api/workspaces
 - POST /api/workspaces
@@ -169,14 +169,16 @@ SSE:
 
 ## 6. 目录结构
 bull-board/
+  cmd/
+    bb/                # Go 控制平面入口（bb server）
+    bb-runner/         # Go Runner 入口
+  internal/
+    control/           # 控制平面实现（API + 状态机 + SQLite + SSE）
+    runner/            # Runner 实现
   apps/
-    control/
-    dashboard/
-    runner/
-  packages/
-    shared/
+    dashboard/         # 前端（Vite + React）
   docs/
     PLAN.md
   artifacts/           # 默认 artifacts 落盘目录
   data/
-    bullboard.db       # SQLite DB 文件（可配置）
+    db/bb.sqlite       # SQLite DB 文件（可配置，或由 SQLITE_PATH 覆盖）

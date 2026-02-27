@@ -133,6 +133,6 @@ bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls 
    cd apps/dashboard && pnpm dev
    ```
 
-前端开发时把 `apps/dashboard/vite.config.ts` 里 proxy 目标改为 `http://localhost:8888`（若当前指向 3000 的 Node control，需改一次）。访问 http://localhost:5173 即可；改 Go 代码会由 Air 自动重新编译并重启，改前端代码由 Vite HMR 热更新。
+前端开发时把 `apps/dashboard/vite.config.ts` 里 proxy 目标改为 `http://localhost:8888`（若之前指向 3000 的旧 Node control，需改一次）。访问 http://localhost:5173 即可；改 Go 代码会由 Air 自动重新编译并重启，改前端代码由 Vite HMR 热更新。
 
 方案与 PR 说明见 [docs/PLAN.md](docs/PLAN.md) 及 `docs/PR-*.md`。

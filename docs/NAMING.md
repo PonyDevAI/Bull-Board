@@ -5,7 +5,7 @@
 | 对外名称 | 说明 | 源码目录 | 部署工件示例 |
 |----------|------|----------|--------------|
 | **dashboard** | 前端 | `apps/dashboard` | bullboard-dashboard（镜像/服务名） |
-| **control** | Control Plane（Fastify API + 状态机 + SQLite + SSE） | `apps/control` | bullboard-control（镜像/服务名/ systemd unit） |
+| **control** | Control Plane（Go bb server + 状态机 + SQLite + SSE） | `cmd/bb`（内部实现 `internal/control`） | bullboard-control（镜像/服务名/ systemd unit） |
 | **runner** | Go 执行器 | `apps/runner` | bullboard-runner（镜像/服务名/ systemd unit） |
 
 ## Release Assets（PR-D3）
