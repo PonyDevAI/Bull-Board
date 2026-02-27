@@ -29,7 +29,7 @@ usage() {
   echo "  --component control|runner|all  组件（默认 all）"
   echo "  --version latest|vX.Y.Z  版本（默认 latest）"
   echo "  --prefix <dir>         安装前缀（默认 /opt/bull-board）"
-  echo "  --port <port>          端口（默认 6666）"
+  echo "  --port <port>          端口（默认 8888）"
   echo "  --purge-data           仅 uninstall：同时删除 data 目录"
   echo "  --from-repo            从当前仓库构建目录安装（不下载 release）"
   exit 1

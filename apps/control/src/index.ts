@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = Fastify({ logger: true });
 
-const DEFAULT_PORT = 6666;
+const DEFAULT_PORT = 8888;
 
 // Health: /api/health（对外）与 /health（兼容）
 app.get("/api/health", async () => {
@@ -52,7 +52,7 @@ if (staticRootExists) {
   });
 }
 
-// TLS：从 BB_CONFIG 或 PREFIX/config/bb.json 读取，同端口 6666
+// TLS：从 BB_CONFIG 或 PREFIX/config/bb.json 读取，同端口 8888
 function loadTlsConfig(): { key: Buffer; cert: Buffer } | null {
   const configPath =
     process.env.BB_CONFIG ||

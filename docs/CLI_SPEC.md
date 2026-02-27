@@ -1,6 +1,6 @@
 # bb CLI 命令说明
 
-**bb** 为 Bull Board 运行期管理命令（安装后可执行 `/usr/local/bin/bb`）。**安装/升级/卸载由 install.sh（curl \| bash）负责，bb 不提供 install/upgrade/uninstall。** 默认前缀为 `/opt/bull-board`，端口为 **6666**；可通过 `--prefix`、`--port` 或环境变量 `BB_PREFIX`、`BB_PORT` 覆盖。
+**bb** 为 Bull Board 运行期管理命令（安装后可执行 `/usr/local/bin/bb`）。**安装/升级/卸载由 install.sh（curl \| bash）负责，bb 不提供 install/upgrade/uninstall。** 默认前缀为 `/opt/bull-board`，端口为 **8888**；可通过 `--prefix`、`--port` 或环境变量 `BB_PREFIX`、`BB_PORT` 覆盖。
 
 ---
 
@@ -8,7 +8,7 @@
 
 | 命令 | 说明 |
 |------|------|
-| `bb server` | 启动 Control Plane 服务（端口 6666；systemd 下由 bb.service 调用） |
+| `bb server` | 启动 Control Plane 服务（端口 8888；systemd 下由 bb.service 调用） |
 | `bb status` | 服务状态与 Panel 地址 |
 | `bb logs [control\|runner] [-f] [--lines N]` | 查看日志（Linux journalctl） |
 | `bb restart [control\|runner\|all]` | 重启服务 |
@@ -24,7 +24,7 @@
 ## 选项
 
 - `--prefix <dir>`：安装前缀（默认 /opt/bull-board）
-- `--port <port>`：端口（仅 server，默认 6666）
+- `--port <port>`：端口（仅 server，默认 8888）
 - `bb logs`：`-f` 持续输出，`--lines N` 显示行数
 
 ---
@@ -67,5 +67,5 @@ bb restart control
 ## 环境变量
 
 - `BB_PREFIX`：安装前缀，默认 `/opt/bull-board`
-- `BB_PORT`：端口，默认 `6666`
+- `BB_PORT`：端口，默认 `8888`
 - 安装/升级/卸载请使用：`curl -fsSL <INSTALL_URL> \| bash` 或 `./infra/deploy/install.sh`（见 [DEPLOY.md](DEPLOY.md)）

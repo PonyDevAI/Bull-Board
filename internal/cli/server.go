@@ -14,7 +14,7 @@ import (
 func NewServerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
-		Short: "启动 Control Plane 服务（端口 6666）",
+		Short: "启动 Control Plane 服务（端口 8888）",
 		RunE:  runServer,
 	}
 	return cmd

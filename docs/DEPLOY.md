@@ -12,7 +12,7 @@ curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/dep
 
 - **默认**：local 模式、全部组件（bb + bb-runner）、最新版本、前缀 `/opt/bull-board`、端口 **8888**。
 - 可通过环境变量覆盖：`VERSION`、`MODE`、`COMPONENT`、`PREFIX`、`PORT`。
-- 安装完成后会输出 Panel URL 与 `bb status`；访问 http://your-host:6666 即可使用。
+- 安装完成后会输出 Panel URL 与 `bb status`；访问 http://your-host:8888 即可使用。
 
 ---
 
