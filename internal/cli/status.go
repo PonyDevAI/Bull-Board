@@ -53,6 +53,6 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	if h, _ := os.Hostname(); h != "" {
 		host = h
 	}
-	fmt.Println("Panel:", proto+"://"+host+":6666")
+	fmt.Println("Panel:", proto+"://"+host+fmt.Sprintf(":%d", port))
 	return nil
 }

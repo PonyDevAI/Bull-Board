@@ -10,7 +10,7 @@
 curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/deploy/install.sh | bash
 ```
 
-- **默认**：local 模式、全部组件（bb + bb-runner）、最新版本、前缀 `/opt/bull-board`、端口 **6666**。
+- **默认**：local 模式、全部组件（bb + bb-runner）、最新版本、前缀 `/opt/bull-board`、端口 **8888**。
 - 可通过环境变量覆盖：`VERSION`、`MODE`、`COMPONENT`、`PREFIX`、`PORT`。
 - 安装完成后会输出 Panel URL 与 `bb status`；访问 http://your-host:6666 即可使用。
 
@@ -31,8 +31,8 @@ curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/dep
 
 ## Local 模式（默认）
 
-- **bb.service**：看板 + API + SSE，单端口 **6666**（无 nginx）。
-- **bb-runner.service**：执行器，默认连接 `http://127.0.0.1:6666`。
+- **bb.service**：看板 + API + SSE，单端口 **8888**（无 nginx）。
+- **bb-runner.service**：执行器，默认连接 `http://127.0.0.1:8888`。
 - 安装脚本会安装 systemd 单元并启动；日常管理用 **bb** 命令（见 [CLI_SPEC.md](CLI_SPEC.md)）。
 
 ### 安装 / 升级 / 卸载
@@ -63,10 +63,10 @@ curl -fsSL ... | bash -s install
 
 ---
 
-## TLS（同端口 6666）
+## TLS（同端口 8888）
 
-- 默认：**http**://host:6666。
-- 启用 TLS 后：**https**://host:6666（同端口，不同时提供 HTTP）。
+- 默认：**http**://host:8888。
+- 启用 TLS 后：**https**://host:8888（同端口，不同时提供 HTTP）。
 
 启用方式：
 
@@ -77,7 +77,7 @@ bb restart control
 ```
 
 关闭 TLS：`bb tls disable`，然后 `bb restart control`。  
-启用后 `bb status` 会输出 **https**://host:6666。
+启用后 `bb status` 会输出 **https**://host:8888。
 
 ---
 

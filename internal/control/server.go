@@ -320,7 +320,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 
 func listenAddr(port int) string {
 	if port <= 0 {
-		port = 6666
+		port = 8888
 	}
 	return fmt.Sprintf(":%d", port)
 }

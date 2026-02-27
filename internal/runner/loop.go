@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -28,6 +29,9 @@ func doHeartbeat(client *http.Client, cfg Config) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if cfg.RunnerAPIKey != "" {
+		req.Header.Set("X-API-Key", cfg.RunnerAPIKey)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		slog.Warn("heartbeat", "err", err)
@@ -42,7 +46,15 @@ func doHeartbeat(client *http.Client, cfg Config) {
 }
 
 func doPoll(client *http.Client, cfg Config) (jobs []map[string]any) {
-	resp, err := client.Get(cfg.APIBaseURL + "/api/runner/poll")
+	req, err := http.NewRequest(http.MethodGet, cfg.APIBaseURL+"/api/runner/poll", nil)
+	if err != nil {
+		slog.Warn("poll request", "err", err)
+		return nil
+	}
+	if cfg.RunnerAPIKey != "" {
+		req.Header.Set("X-API-Key", cfg.RunnerAPIKey)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		slog.Warn("poll", "err", err)
 		return nil
@@ -61,6 +73,10 @@ func doReport(client *http.Client, baseURL string, payload map[string]any) error
 	body, _ := json.Marshal(payload)
 	req, _ := http.NewRequest(http.MethodPost, baseURL+"/api/runner/report", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	// doReport 目前仅用于 Runner 主 loop，无法直接访问 cfg，这里假设 baseURL 对应同一 RunnerAPIKey 环境
+	if key := os.Getenv("RUNNER_API_KEY"); key != "" {
+		req.Header.Set("X-API-Key", key)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

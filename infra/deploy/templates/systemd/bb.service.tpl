@@ -7,7 +7,7 @@ Type=simple
 User=root
 WorkingDirectory={{PREFIX}}
 Environment=PREFIX={{PREFIX}}
-Environment=PORT=6666
+Environment=PORT=8888
 Environment=SQLITE_PATH={{PREFIX}}/data/db/bb.sqlite
 Environment=DASHBOARD_DIST={{PREFIX}}/current/dashboard/dist
 EnvironmentFile=-{{PREFIX}}/config/bb.env

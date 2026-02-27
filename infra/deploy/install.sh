@@ -2,7 +2,7 @@
 # Bull Board 安装/升级/卸载脚本（bb 目录规范）
 # 用法: ./install.sh <install|upgrade|uninstall|status|version> [options]
 # 目录: PREFIX/versions/<v>/, PREFIX/current -> versions/<v>, PREFIX/config/, PREFIX/data/
-# 服务: bb.service, bb-runner.service，端口 6666
+# 服务: bb.service, bb-runner.service，端口 8888
 
 set -e
 
@@ -12,7 +12,7 @@ PREFIX="${PREFIX:-/opt/bull-board}"
 MODE="${MODE:-local}"
 COMPONENT="${COMPONENT:-all}"
 VERSION="${VERSION:-latest}"
-PORT="${PORT:-6666}"
+PORT="${PORT:-8888}"
 PURGE_DATA=false
 FROM_REPO=false
 
@@ -143,6 +143,24 @@ install_local() {
     ($want_control || $want_runner) && systemctl daemon-reload
     $want_control && systemctl enable --now bb
     $want_runner && systemctl enable --now bb-runner
+    # 若存在初始凭证，则打印并将 runner_api_key 写入 bb.env，随后重启 runner
+    local cred="$PREFIX/config/initial_credentials.txt"
+    if [ -f "$cred" ]; then
+      echo "=== Bull Board 初始凭证（请妥善保存） ==="
+      cat "$cred"
+      echo "======================================="
+      local runner_key
+      runner_key="$(grep -E '^runner_api_key=' "$cred" | head -1 | sed 's/^runner_api_key=//')"
+      if [ -n "$runner_key" ]; then
+        mkdir -p "$PREFIX/config"
+        touch "$PREFIX/config/bb.env"
+        chmod 640 "$PREFIX/config/bb.env" 2>/dev/null || chmod 600 "$PREFIX/config/bb.env" 2>/dev/null || true
+        if ! grep -q '^RUNNER_API_KEY=' "$PREFIX/config/bb.env" 2>/dev/null; then
+          echo "RUNNER_API_KEY=$runner_key" >> "$PREFIX/config/bb.env"
+        fi
+        systemctl restart bb-runner || true
+      fi
+    fi
   else
     echo "未以 root 运行，跳过 systemd。请手动："
     echo "  sudo sed \"s|{{PREFIX}}|$PREFIX|g\" $TEMPLATES/systemd/bb.service.tpl | sudo tee /etc/systemd/system/bb.service"
@@ -193,7 +211,7 @@ status_local() {
   [ "$(uname -s)" = "Linux" ] && systemctl is-active bb 2>/dev/null && echo "bb: active" || echo "bb: inactive"
   [ "$(uname -s)" = "Linux" ] && systemctl is-active bb-runner 2>/dev/null && echo "bb-runner: active" || echo "bb-runner: inactive"
   echo "=== Panel ==="
-  echo "http://$(hostname -f 2>/dev/null || echo localhost):6666"
+  echo "http://$(hostname -f 2>/dev/null || echo localhost):$PORT"
 }
 
 status_docker() {

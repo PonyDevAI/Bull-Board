@@ -18,7 +18,7 @@ import (
 func NewTLSCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tls",
-		Short: "TLS 管理（同端口 6666）",
+		Short: "TLS 管理（同端口 8888）",
 	}
 	cmd.AddCommand(NewTLSEnableCmd())
 	cmd.AddCommand(NewTLSDisableCmd())
@@ -121,7 +121,7 @@ func writeTLSConfig(prefix string, enabled bool, cert, key string) error {
 	}
 	root["tls"] = tls
 	if _, ok := root["port"]; !ok {
-		root["port"] = 6666
+		root["port"] = 8888
 	}
 	data, _ := json.MarshalIndent(root, "", "  ")
 	return os.WriteFile(configPath, data, 0644)

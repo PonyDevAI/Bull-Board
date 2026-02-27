@@ -22,7 +22,7 @@ func NewDoctorCmd() *cobra.Command {
 func runDoctor(cmd *cobra.Command, args []string) error {
 	fmt.Println("=== bb doctor ===")
 	fmt.Println("PREFIX:", prefix)
-	fmt.Println("PORT:  6666")
+	fmt.Println("PORT:  ", port)
 	current := filepath.Join(prefix, "current")
 	if fi, err := os.Lstat(current); err == nil && fi.Mode()&os.ModeSymlink != 0 {
 		target, _ := os.Readlink(current)
@@ -44,16 +44,17 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		}
 	}
 	// API
-	resp, err := http.Get("http://127.0.0.1:6666/api/health")
+	url := fmt.Sprintf("http://127.0.0.1:%d/api/health", port)
+	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("API (6666): 未响应")
+		fmt.Printf("API (%d): 未响应\n", port)
 		return nil
 	}
 	resp.Body.Close()
 	if resp.StatusCode == 200 {
-		fmt.Println("API (6666): OK")
+		fmt.Printf("API (%d): OK\n", port)
 	} else {
-		fmt.Println("API (6666):", resp.StatusCode)
+		fmt.Printf("API (%d): %d\n", port, resp.StatusCode)
 	}
 	return nil
 }

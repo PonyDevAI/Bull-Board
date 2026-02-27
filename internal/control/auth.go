@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"os"
 	"path/filepath"
 	"time"
@@ -43,7 +44,23 @@ func IsDev(prefix string) bool {
 	return false
 }
 
-// EnsureFirstUser 首次启动时若无用户则创建 admin：生产随机密码并输出/写文件，开发固定 admin/admin
+func randomAlphaNum(n int) (string, error) {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, n)
+	for i := 0; i < n; i++ {
+		x, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = letters[x.Int64()]
+	}
+	return string(b), nil
+}
+
+// EnsureFirstUser 首次启动时若无用户则创建初始账户与本地 runner API key：
+// - 开发环境固定 admin/admin
+// - 生产环境随机 username/password（各 8 位），并写入 initial_credentials.txt
+// 同时生成 local-runner 专用 API key，并附加写入 initial_credentials.txt。
 func EnsureFirstUser(db *sql.DB, prefix string) error {
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&n); err != nil || n > 0 {
@@ -55,21 +72,16 @@ func EnsureFirstUser(db *sql.DB, prefix string) error {
 		password = "admin"
 		slog.Info("auth: dev mode, created admin with password admin")
 	} else {
-		b := make([]byte, 16)
-		if _, err := rand.Read(b); err != nil {
+		u, err := randomAlphaNum(8)
+		if err != nil {
 			return err
 		}
-		password = hex.EncodeToString(b)
-		fmt.Fprintf(os.Stderr, "[Bull Board] First run: admin user created. Initial password: %s\n", password)
-		slog.Info("auth: first run, created admin", "username", username)
-		credPath := filepath.Join(prefix, "config", "initial_credentials.txt")
-		if dir := filepath.Dir(credPath); dir != "" {
-			_ = os.MkdirAll(dir, 0755)
-			if f, err := os.OpenFile(credPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600); err == nil {
-				_, _ = fmt.Fprintf(f, "username=%s\npassword=%s\n", username, password)
-				f.Close()
-			}
+		p, err := randomAlphaNum(8)
+		if err != nil {
+			return err
 		}
+		username = u
+		password = p
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -77,8 +89,37 @@ func EnsureFirstUser(db *sql.DB, prefix string) error {
 	}
 	id := common.UUID()
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err = db.Exec(`INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)`, id, username, string(hash), now)
-	return err
+	if _, err = db.Exec(`INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)`, id, username, string(hash), now); err != nil {
+		return err
+	}
+
+	// 创建本地 runner API key
+	plainKey, hashHex, prefixKey, err := GenerateAPIKey()
+	if err != nil {
+		return err
+	}
+	apiKeyID := common.UUID()
+	if _, err := db.Exec(`INSERT INTO api_keys (id, name, key_hash, key_prefix, created_at) VALUES (?, ?, ?, ?, ?)`,
+		apiKeyID, "local-runner", hashHex, prefixKey, now); err != nil {
+		return err
+	}
+
+	if !IsDev(prefix) {
+		credPath := filepath.Join(prefix, "config", "initial_credentials.txt")
+		if dir := filepath.Dir(credPath); dir != "" {
+			_ = os.MkdirAll(dir, 0755)
+			f, err := os.OpenFile(credPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+			if err == nil {
+				_, _ = fmt.Fprintf(f, "username=%s\npassword=%s\nrunner_api_key=%s\n", username, password, plainKey)
+				f.Close()
+			}
+		}
+		fmt.Fprintf(os.Stderr, "[Bull Board] First run: user created. username=%s password=%s\n", username, password)
+		fmt.Fprintf(os.Stderr, "[Bull Board] First run: local runner API key: %s\n", plainKey)
+		slog.Info("auth: first run, created admin and local-runner api key", "username", username)
+	}
+
+	return nil
 }
 
 // DeleteInitialCredentials 首次成功登录后删除 initial_credentials.txt

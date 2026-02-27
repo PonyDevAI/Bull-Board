@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # bb CLI - Bull Board 管理命令（宝塔风格）
-# 默认 prefix=/opt/bull-board, port=6666
+# 默认 prefix=/opt/bull-board, port=8888
 # 用法: bb <command> [options]
 
 set -e
 
 PREFIX="${BB_PREFIX:-/opt/bull-board}"
-PORT="${BB_PORT:-6666}"
+PORT="${BB_PORT:-8888}"
 SVC_CONTROL="bb"
 SVC_RUNNER="bb-runner"
 
@@ -31,7 +31,7 @@ usage() {
   echo "  --mode local|docker  部署模式（默认 local）"
   echo "  --version latest|vX.Y.Z  版本（默认 latest）"
   echo "  --prefix <dir>  安装前缀（默认 /opt/bull-board）"
-  echo "  --port <port>   端口（默认 6666，仅 control）"
+  echo "  --port <port>   端口（默认 8888，仅 control）"
   echo "  --purge-data    仅 uninstall：同时删除 data 目录"
   echo ""
   echo "环境变量: BB_PREFIX, BB_PORT"

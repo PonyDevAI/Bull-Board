@@ -17,7 +17,7 @@ func NewRootCmd() *cobra.Command {
 		Long:  "bb 提供 server、status、logs、restart、doctor、tls 等运行期管理（安装/升级/卸载由 install.sh 负责）。",
 	}
 	cmd.PersistentFlags().StringVar(&prefix, "prefix", getEnv("BB_PREFIX", "/opt/bull-board"), "安装前缀")
-	cmd.PersistentFlags().IntVar(&port, "port", 6666, "端口（仅 server）")
+	cmd.PersistentFlags().IntVar(&port, "port", 8888, "端口（仅 server）")
 	cmd.AddCommand(NewServerCmd())
 	cmd.AddCommand(NewVersionCmd())
 	cmd.AddCommand(NewTLSCmd())

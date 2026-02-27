@@ -7,7 +7,7 @@ Type=simple
 User=root
 WorkingDirectory={{PREFIX}}
 Environment=PREFIX={{PREFIX}}
-Environment=API_BASE_URL=http://127.0.0.1:6666
+Environment=API_BASE_URL=http://127.0.0.1:8888
 Environment=SQLITE_PATH={{PREFIX}}/data/db/bb.sqlite
 Environment=ARTIFACTS_DIR={{PREFIX}}/data/artifacts
 EnvironmentFile=-{{PREFIX}}/config/bb.env

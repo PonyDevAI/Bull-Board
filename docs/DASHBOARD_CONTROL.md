@@ -4,7 +4,7 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
 
 ## 1. 接口约定
 
-- **Control** 默认端口 **6666**，提供：
+- **Control** 默认端口 **8888**，提供：
   - `GET/POST /api/workspaces`、`GET /api/workspaces/:id`
   - `GET/POST /api/tasks`、`GET/POST /api/tasks/:id`、`/api/tasks/:id/status|messages|runs|enqueue`、`/api/tasks/:id/actions/*`
   - `GET /api/runs/:run_id/artifacts`、`GET /api/artifacts/:id/download`
@@ -17,14 +17,14 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
 1. 先启动 **Control**（提供 API）：
    ```bash
    cd apps/control && pnpm dev
-   # 监听 http://localhost:6666
+   # 监听 http://localhost:8888
    ```
 2. 再启动 **Dashboard**（Vite 会做代理）：
    ```bash
    cd apps/dashboard && pnpm dev
    # 打开 http://localhost:5173
    ```
-3. Vite 配置（`apps/dashboard/vite.config.ts`）中已把 `/api` 和 `/api/events` 代理到 `http://localhost:6666`，因此页面里的请求会发到 Control，**无需改代码**。
+3. Vite 配置（`apps/dashboard/vite.config.ts`）中已把 `/api` 和 `/api/events` 代理到 `http://localhost:8888`，因此页面里的请求会发到 Control，**无需改代码**。
 
 ## 3. 生产环境（同源部署，推荐）
 
@@ -36,7 +36,7 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
      # 或
      DASHBOARD_DIST=/path/to/dashboard/dist pnpm start
      ```
-  3. 同一端口（默认 6666）既提供 `/api`，又提供前端页面；Dashboard 请求 `/api` 为同源，无需配置。
+  3. 同一端口（默认 8888）既提供 `/api`，又提供前端页面；Dashboard 请求 `/api` 为同源，无需配置。
 
 ## 4. 生产环境（前后端分离 / 跨域）
 
@@ -53,6 +53,6 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
 
 | 场景           | 做法 |
 |----------------|------|
-| 本地开发       | 先起 control:6666，再起 dashboard；Vite 代理 `/api` → control |
+| 本地开发       | 先起 control:8888，再起 dashboard；Vite 代理 `/api` → control |
 | 生产同源       | Control 用 `STATIC_DIR` / `DASHBOARD_DIST` 托管 dashboard dist，同端口 |
 | 生产跨域       | 构建时设 `VITE_API_BASE=https://control 的地址`，Control 开 CORS |

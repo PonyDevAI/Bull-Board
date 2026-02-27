@@ -51,7 +51,7 @@ func LoadServerConfig(prefix string) (*ServerConfig, error) {
 }
 
 func defaultServerConfig(prefix string) *ServerConfig {
-	port := 6666
+	port := 8888
 	if v := getEnv("PORT", ""); v != "" {
 		if p, _ := strconv.Atoi(v); p > 0 {
 			port = p
