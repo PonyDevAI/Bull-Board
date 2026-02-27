@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, Play, Square, RefreshCw, Trash2, ChevronDown, Copy } from "lucide-react";
 import { getApiBase, getSystemLogs, authMe } from "@/api";
-import { cn } from "@/lib/utils";
 
 const btnPrimary =
   "inline-flex h-8 items-center justify-center rounded bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 md:h-8 md:px-3.5 md:text-sm";

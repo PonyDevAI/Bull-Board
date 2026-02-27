@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { KanbanCard } from "./KanbanCard";
 import type { KanbanColumn as ColumnType, KanbanCard as CardType, CardStatus } from "@/mocks/kanban";
 

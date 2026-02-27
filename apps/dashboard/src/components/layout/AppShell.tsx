@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Sidebar, getStoredCollapsed } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";

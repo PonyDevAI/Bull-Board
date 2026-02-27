@@ -31,9 +31,10 @@ const SETTINGS_TABS = [
   { value: "about", label: "关于" },
 ] as const;
 
-const TAB_VALUES = new Set(SETTINGS_TABS.map((t) => t.value));
-function isValidTab(v: string | null): v is (typeof SETTINGS_TABS)[number]["value"] {
-  return v !== null && TAB_VALUES.has(v);
+type SettingsTabValue = (typeof SETTINGS_TABS)[number]["value"];
+const TAB_VALUES = new Set<SettingsTabValue>(SETTINGS_TABS.map((t) => t.value));
+function isValidTab(v: string | null): v is SettingsTabValue {
+  return v !== null && TAB_VALUES.has(v as SettingsTabValue);
 }
 
 /** 单行设置项：标签 | 输入/开关 | 按钮 + 紧靠的提示文字（宝塔风格） */
@@ -474,7 +475,7 @@ function UpdatesSection() {
 export function SettingsPage() {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
-  const tab = isValidTab(tabFromUrl) ? tabFromUrl : "system";
+  const tab: SettingsTabValue = isValidTab(tabFromUrl) ? tabFromUrl : "system";
   const settingsPath = "/settings";
 
   const [search, setSearch] = useState("");

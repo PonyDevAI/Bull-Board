@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Filter, ArrowUpDown, LayoutGrid, Plus } from "lucide-react";
+import { Filter, ArrowUpDown, LayoutGrid } from "lucide-react";
 import { BoardTabs } from "@/components/kanban/BoardTabs";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import {

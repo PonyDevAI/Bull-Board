@@ -1,12 +1,7 @@
 import { useCallback, useState } from "react";
 import { KanbanColumn } from "./KanbanColumn";
 import { CardDetailDrawer } from "./CardDetailDrawer";
-import type {
-  KanbanBoard as BoardType,
-  KanbanColumn as ColumnType,
-  KanbanCard as CardType,
-  CardStatus,
-} from "@/mocks/kanban";
+import type { KanbanBoard as BoardType, KanbanCard as CardType, CardStatus } from "@/mocks/kanban";
 
 export interface KanbanBoardProps {
   board: BoardType;
@@ -16,7 +11,6 @@ export interface KanbanBoardProps {
 export function KanbanBoard({ board, onBoardChange }: KanbanBoardProps) {
   const [detailCard, setDetailCard] = useState<CardType | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [draggingCard, setDraggingCard] = useState<string | null>(null);
 
   const moveCard = useCallback(
     (cardId: string, toColumnId: CardStatus) => {
@@ -59,8 +53,8 @@ export function KanbanBoard({ board, onBoardChange }: KanbanBoardProps) {
               <KanbanColumn
                 column={col}
                 cards={cards}
-                onDragStart={(cardId) => setDraggingCard(cardId)}
-                onDragEnd={() => setDraggingCard(null)}
+                onDragStart={() => {}}
+                onDragEnd={() => {}}
                 onDropInColumn={moveCard}
                 onCardClick={onCardClick}
                 onAddCard={onAddCardPlaceholder}

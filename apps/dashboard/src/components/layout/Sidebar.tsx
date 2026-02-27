@@ -39,8 +39,6 @@ import {
 const SIDEBAR_STORAGE_KEY = "bb-sidebar";
 const WIDTH_EXPANDED = 240;
 const WIDTH_COLLAPSED = 68;
-/** 收起时与菜单项同一行高 */
-const SIDEBAR_ROW_HEIGHT = 32;
 /** 与 Topbar 高度一致 */
 const SIDEBAR_HEADER_HEIGHT = 56;
 /** header logo 与菜单图标统一尺寸（30px） */
