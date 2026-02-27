@@ -57,11 +57,16 @@ download_assets() {
   [ -n "$GITHUB_REPO" ] || { echo "GITHUB_REPO 未设置"; return 1; }
   local arch; arch="$(detect_arch)"
   local base="https://github.com/$GITHUB_REPO/releases/download/$tag"
-  local tarball="bullboard-all-linux-$arch-$tag.tar.gz"
-  echo "下载 $tarball ..."
-  (cd "$tmpdir" && curl -fsSL -O "$base/$tarball" -O "$base/SHA256SUMS") || { echo "下载失败"; return 1; }
+  local ASSET="bullboard-all-linux-$arch-$tag.tar.gz"
+  echo "下载 $ASSET ..."
+  (cd "$tmpdir" && curl -fsSL -O "$base/$ASSET" -O "$base/SHA256SUMS") || { echo "下载失败"; return 1; }
   if [ -f "$tmpdir/SHA256SUMS" ]; then
-    (cd "$tmpdir" && sha256sum -c SHA256SUMS 2>/dev/null) || (cd "$tmpdir" && shasum -a 256 -c SHA256SUMS 2>/dev/null) || { echo "SHA256 校验失败"; return 1; }
+    if grep -q "$ASSET" "$tmpdir/SHA256SUMS"; then
+      (cd "$tmpdir" && grep "$ASSET" SHA256SUMS | sha256sum -c - 2>/dev/null) || (cd "$tmpdir" && grep "$ASSET" SHA256SUMS | shasum -a 256 -c - 2>/dev/null) || { echo "SHA256 校验失败"; return 1; }
+    else
+      echo "未在 SHA256SUMS 中找到 $ASSET"
+      return 1
+    fi
   fi
   return 0
 }
