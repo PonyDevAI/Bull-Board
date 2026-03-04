@@ -133,5 +133,39 @@ func initSchema(db *sql.DB) error {
 	} {
 		_, _ = db.Exec(q)
 	}
+	// PR2: company/worker 模型
+	if err := initSchemaCompanyWorkers(db); err != nil {
+		return err
+	}
+	return nil
+}
+
+func initSchemaCompanyWorkers(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS companies (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL);
+		CREATE TABLE IF NOT EXISTS depts (id TEXT PRIMARY KEY, company_id TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('plan','exec')), name TEXT NOT NULL, created_at TEXT NOT NULL);
+		CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, company_id TEXT NOT NULL, dept_id TEXT, name TEXT NOT NULL, roles_json TEXT, model_config_json TEXT, prompt_profile TEXT, tool_profile TEXT, is_enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+		CREATE TABLE IF NOT EXISTS workers (id TEXT PRIMARY KEY, company_id TEXT NOT NULL, dept_id TEXT, agent_id TEXT NOT NULL UNIQUE, runner_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'offline', max_concurrency INTEGER NOT NULL DEFAULT 1, current_job_id TEXT, last_seen_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+	`)
+	if err != nil {
+		return err
+	}
+	// runners 表已有 (id, last_heartbeat)；补列
+	for _, q := range []string{
+		"ALTER TABLE runners ADD COLUMN company_id TEXT",
+		"ALTER TABLE runners ADD COLUMN name TEXT",
+		"ALTER TABLE runners ADD COLUMN host TEXT",
+		"ALTER TABLE runners ADD COLUMN capabilities_json TEXT",
+		"ALTER TABLE runners ADD COLUMN max_concurrency INTEGER DEFAULT 1",
+		"ALTER TABLE runners ADD COLUMN version TEXT",
+		"ALTER TABLE runners ADD COLUMN last_seen_at TEXT",
+		"ALTER TABLE runners ADD COLUMN status TEXT DEFAULT 'offline'",
+	} {
+		_, _ = db.Exec(q)
+	}
+	// workspaces 补 company_id
+	_, _ = db.Exec("ALTER TABLE workspaces ADD COLUMN company_id TEXT")
+	// 默认公司
+	_, _ = db.Exec(`INSERT OR IGNORE INTO companies (id, name, created_at) VALUES ('default', 'Default', datetime('now'))`)
 	return nil
 }

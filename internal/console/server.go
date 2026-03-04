@@ -207,6 +207,15 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.authLogout(w, r)
 		return
 	}
+	// Runner 注册/心跳（无需 session，可用 API key）
+	if path == "/api/runners/register" && r.Method == http.MethodPost {
+		s.apiRunnersRegister(w, r)
+		return
+	}
+	if path == "/api/runners/heartbeat" && r.Method == http.MethodPost {
+		s.apiRunnersHeartbeat(w, r)
+		return
+	}
 	// SSE 仅 session
 	if path == "/api/events" {
 		if !s.sessionRequired(w, r) {
@@ -279,6 +288,18 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 	}
 	if path == "/api/system/upgrade/plan" && r.Method == http.MethodPost {
 		s.systemUpgradePlan(w, r)
+		return
+	}
+	// /api/runners（GET）、/api/workers 需鉴权
+	if strings.HasPrefix(path, "/api/runners") || strings.HasPrefix(path, "/api/workers") {
+		if !s.authRequired(w, r) {
+			return
+		}
+		if strings.HasPrefix(path, "/api/runners") {
+			s.apiRunnersRoutes(w, r)
+			return
+		}
+		s.apiWorkersRoutes(w, r)
 		return
 	}
 	// workspaces, tasks, runner 等需鉴权后交给 staticOrSPA 内部分发
