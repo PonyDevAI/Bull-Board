@@ -41,7 +41,7 @@ export function TaskDetail() {
 
   if (!id) return null;
   if (loading || !task) {
-    return <p className="p-4 text-slate-500 dark:text-slate-400">加载中...</p>;
+    return <p className="p-4 text-slate-500 dark:text-slate-400">加载中…</p>;
   }
 
   const runs = task.runs ?? [];
@@ -115,7 +115,7 @@ export function TaskDetail() {
           {tab === "runs" && (
             <div className="space-y-2">
               {runs.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400">暂无 runs</p>
+                <p className="text-slate-500 dark:text-slate-400">暂无 Runs</p>
               ) : (
                 runs.map((r) => (
                   <div key={r.id} className="rounded border border-slate-200 p-2 text-sm dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
@@ -125,6 +125,11 @@ export function TaskDetail() {
                         <span className="text-red-600 dark:text-red-400"> — {r.errorMessage}</span>
                       )}
                     </p>
+                    {r.assignedWorkerId && (
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                        指派: <span className="font-medium">{r.assignedWorkerId}</span>
+                      </p>
+                    )}
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {r.startedAt ?? ""} ~ {r.finishedAt ?? ""}
                     </p>

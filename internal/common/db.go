@@ -165,7 +165,13 @@ func initSchemaCompanyWorkers(db *sql.DB) error {
 	}
 	// workspaces 补 company_id
 	_, _ = db.Exec("ALTER TABLE workspaces ADD COLUMN company_id TEXT")
+	// jobs 补 assigned_worker_id（PR3 强指派）
+	_, _ = db.Exec("ALTER TABLE jobs ADD COLUMN assigned_worker_id TEXT")
 	// 默认公司
 	_, _ = db.Exec(`INSERT OR IGNORE INTO companies (id, name, created_at) VALUES ('default', 'Default', datetime('now'))`)
+	// 默认 agent + runner + worker（用于未指定 worker 时的 enqueue 兼容）
+	_, _ = db.Exec(`INSERT OR IGNORE INTO agents (id, company_id, name, is_enabled, created_at, updated_at) VALUES ('default', 'default', 'Default Agent', 1, datetime('now'), datetime('now'))`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO runners (id, company_id, status, last_heartbeat) VALUES ('default', 'default', 'offline', datetime('now'))`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO workers (id, company_id, agent_id, runner_id, status, max_concurrency, created_at, updated_at) VALUES ('default', 'default', 'default', 'default', 'offline', 1, datetime('now'), datetime('now'))`)
 	return nil
 }

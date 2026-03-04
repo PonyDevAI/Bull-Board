@@ -34,6 +34,7 @@ export const sidebarNavGroups: NavGroup[] = [
   {
     items: [
       { to: "/dashboard/runners", label: "Runners", icon: "Cpu", badge: "2", badgeVariant: "success" },
+      { to: "/dashboard/workers", label: "Workers", icon: "Bot" },
       { to: "/dashboard/workspaces", label: "Workspaces", icon: "FolderOpen" },
       { to: "/dashboard/artifacts", label: "Artifacts", icon: "Package" },
     ],

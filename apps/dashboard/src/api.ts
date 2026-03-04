@@ -58,6 +58,7 @@ export type Run = {
   startedAt?: string;
   finishedAt?: string;
   artifacts?: Artifact[];
+  assignedWorkerId?: string;
 };
 
 export type Artifact = {
@@ -316,5 +317,46 @@ export async function actionRetry(taskId: string): Promise<{ runId: string; jobI
 
 export async function actionContinueFix(taskId: string) {
   const r = await fetch(API + "/tasks/" + taskId + "/actions/continue-fix", { ...defaultFetchOptions, method: "POST" });
+  return handleResponse(r);
+}
+
+// --- Workers / Runners (PR5) ---
+export type Worker = {
+  id: string;
+  company_id: string;
+  dept_id: string;
+  agent_id: string;
+  runner_id: string;
+  status: string;
+  max_concurrency: number;
+  current_job_id?: string;
+  last_seen_at?: string;
+  created_at: string;
+  agent_name?: string;
+  runner_name?: string;
+  runner_last_heartbeat?: string;
+};
+
+export type Runner = {
+  id: string;
+  company_id: string;
+  name: string;
+  host: string;
+  capabilities_json: string;
+  max_concurrency: number;
+  version: string;
+  last_seen_at: string;
+  status: string;
+  last_heartbeat: string;
+};
+
+export async function getWorkers(params?: { dept?: string; status?: string }): Promise<Worker[]> {
+  const q = new URLSearchParams(params as Record<string, string>).toString();
+  const r = await fetch(API + "/workers" + (q ? "?" + q : ""), defaultFetchOptions);
+  return handleResponse(r);
+}
+
+export async function getRunners(): Promise<Runner[]> {
+  const r = await fetch(API + "/runners", defaultFetchOptions);
   return handleResponse(r);
 }

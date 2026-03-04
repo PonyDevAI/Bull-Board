@@ -40,7 +40,7 @@ export function Workspaces() {
         </div>
       </div>
       {loading ? (
-        <p className="text-slate-500 dark:text-slate-400">加载中...</p>
+        <p className="text-slate-500 dark:text-slate-400">加载中…</p>
       ) : (
         <div className="grid grid-cols-1 gap-gap md:grid-cols-2">
           {list.map((w) => (

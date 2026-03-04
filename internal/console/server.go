@@ -184,6 +184,8 @@ func (s *Server) runnerRoutes(w http.ResponseWriter, r *http.Request) {
 		s.runnerHeartbeat(w, r)
 	case path == "/api/runner/poll":
 		s.runnerPoll(w, r)
+	case strings.HasPrefix(path, "/api/runner/pull"):
+		s.runnerPull(w, r)
 	case path == "/api/runner/report" && r.Method == http.MethodPost:
 		s.runnerReport(w, r)
 	default:
@@ -288,6 +290,14 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 	}
 	if path == "/api/system/upgrade/plan" && r.Method == http.MethodPost {
 		s.systemUpgradePlan(w, r)
+		return
+	}
+	// /api/jobs/:id/report（Runner 上报，需 API key 或 session）
+	if strings.HasPrefix(path, "/api/jobs/") && strings.HasSuffix(path, "/report") && r.Method == http.MethodPost {
+		if !s.authRequired(w, r) {
+			return
+		}
+		s.jobReport(w, r)
 		return
 	}
 	// /api/runners（GET）、/api/workers 需鉴权

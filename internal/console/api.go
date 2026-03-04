@@ -284,6 +284,11 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 			if finished.Valid {
 				m["finishedAt"] = finished.String
 			}
+			var awID string
+			s.db.QueryRow(`SELECT assigned_worker_id FROM jobs WHERE run_id = ? LIMIT 1`, rid.String).Scan(&awID)
+			if awID != "" {
+				m["assignedWorkerId"] = awID
+			}
 			var artList []map[string]any
 			arts, _ := s.db.Query(`SELECT id, run_id, type, uri, created_at FROM artifacts WHERE run_id = ?`, rid.String)
 			if arts != nil {
@@ -467,8 +472,9 @@ func (s *Server) enqueueTask(w http.ResponseWriter, r *http.Request, taskID stri
 		return
 	}
 	var body struct {
-		Mode    string         `json:"mode"`
-		Payload map[string]any `json:"payload"`
+		Mode              string         `json:"mode"`
+		Payload           map[string]any `json:"payload"`
+		AssignedWorkerID  string         `json:"assigned_worker_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Mode == "" || body.Payload == nil {
 		writeJSONError(w, "mode and payload required", http.StatusBadRequest)
@@ -478,16 +484,20 @@ func (s *Server) enqueueTask(w http.ResponseWriter, r *http.Request, taskID stri
 		writeJSONError(w, "invalid mode", http.StatusBadRequest)
 		return
 	}
-	runId, jobId := s.enqueue(runEnqueueParams{TaskID: taskID, WorkspaceID: taskWorkspace, Mode: body.Mode, Payload: body.Payload})
+	if body.AssignedWorkerID == "" {
+		body.AssignedWorkerID = "default"
+	}
+	runId, jobId := s.enqueue(runEnqueueParams{TaskID: taskID, WorkspaceID: taskWorkspace, Mode: body.Mode, Payload: body.Payload, AssignedWorkerID: body.AssignedWorkerID})
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"runId": runId, "jobId": jobId})
 }
 
 type runEnqueueParams struct {
-	TaskID      string
-	WorkspaceID string
-	Mode        string
-	Payload     map[string]any
+	TaskID           string
+	WorkspaceID      string
+	Mode             string
+	Payload          map[string]any
+	AssignedWorkerID string
 }
 
 func (s *Server) enqueue(p runEnqueueParams) (runId, jobId string) {
@@ -495,9 +505,12 @@ func (s *Server) enqueue(p runEnqueueParams) (runId, jobId string) {
 	jobId = common.UUID()
 	now := time.Now().UTC().Format(time.RFC3339)
 	payloadJSON, _ := json.Marshal(p.Payload)
+	if p.AssignedWorkerID == "" {
+		p.AssignedWorkerID = "default"
+	}
 	s.db.Exec(`INSERT INTO runs (id, task_id, mode, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)`, runId, p.TaskID, p.Mode, now, now)
-	s.db.Exec(`INSERT INTO jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?)`,
-		jobId, runId, p.TaskID, p.WorkspaceID, p.Mode, string(payloadJSON), now, now, now)
+	s.db.Exec(`INSERT INTO jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, assigned_worker_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
+		jobId, runId, p.TaskID, p.WorkspaceID, p.Mode, string(payloadJSON), now, p.AssignedWorkerID, now, now)
 	return runId, jobId
 }
 
@@ -523,7 +536,7 @@ func (s *Server) actionSubmit(w http.ResponseWriter, taskID string) {
 		"branch":         branch,
 		"submit":         map[string]any{"actions": []string{"commit", "push"}, "commit_message": "BullBoard: " + taskTitle, "remote": "origin"},
 	}
-	runId, jobId := s.enqueue(runEnqueueParams{TaskID: taskID, WorkspaceID: workspaceId, Mode: "SUBMIT", Payload: payload})
+	runId, jobId := s.enqueue(runEnqueueParams{TaskID: taskID, WorkspaceID: workspaceId, Mode: "SUBMIT", Payload: payload, AssignedWorkerID: "default"})
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"runId": runId, "jobId": jobId})
 }
@@ -570,8 +583,13 @@ func (s *Server) actionRetry(w http.ResponseWriter, taskID string) {
 	jobId := common.UUID()
 	s.db.Exec(`INSERT INTO runs (id, task_id, mode, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)`, runId, taskID, mode, now, now)
 	pj, _ := json.Marshal(payload)
-	s.db.Exec(`INSERT INTO jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?)`,
-		jobId, runId, taskID, workspaceId, mode, string(pj), now, now, now)
+	var assignedWorkerID string
+	s.db.QueryRow(`SELECT assigned_worker_id FROM jobs j JOIN runs r ON j.run_id = r.id WHERE r.task_id = ? ORDER BY j.created_at DESC LIMIT 1`, taskID).Scan(&assignedWorkerID)
+	if assignedWorkerID == "" {
+		assignedWorkerID = "default"
+	}
+	s.db.Exec(`INSERT INTO jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, assigned_worker_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
+		jobId, runId, taskID, workspaceId, mode, string(pj), now, assignedWorkerID, now, now)
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"runId": runId, "jobId": jobId})
 }

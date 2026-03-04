@@ -10,6 +10,7 @@ import { KanbanPage } from "@/pages/KanbanPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { LogsPage } from "@/pages/LogsPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { WorkersPage } from "@/pages/WorkersPage";
 
 function Home() {
   return (
@@ -199,6 +200,7 @@ export default function App() {
           <Route path="backlog" element={<div className="text-muted-foreground p-4">Backlog 占位</div>} />
           <Route path="runs" element={<div className="text-muted-foreground p-4">Runs 占位</div>} />
           <Route path="runners" element={<div className="text-muted-foreground p-4">Runners 占位</div>} />
+          <Route path="workers" element={<WorkersPage />} />
           <Route path="workspaces" element={<div className="text-muted-foreground p-4">Workspaces 占位</div>} />
           <Route path="artifacts" element={<div className="text-muted-foreground p-4">Artifacts 占位</div>} />
           <Route path="models" element={<div className="text-muted-foreground p-4">Models 占位</div>} />

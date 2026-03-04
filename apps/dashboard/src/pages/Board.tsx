@@ -130,7 +130,7 @@ export function Board() {
       )}
 
       {loading ? (
-        <p className="text-slate-500 dark:text-slate-400">加载中...</p>
+        <p className="text-slate-500 dark:text-slate-400">加载中…</p>
       ) : (
         <div className="flex gap-gap overflow-x-auto pb-page -mx-page px-page md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none">
           {COLUMNS.map((col) => {
