@@ -10,3 +10,9 @@ artifacts/*
 data/*.db
 !data/.gitkeep
 apps/console/data/
+/bb
+/bb-runner
+/bb-amd64
+/bb-arm64
+/bb-runner-amd64
+/bb-runner-arm64
