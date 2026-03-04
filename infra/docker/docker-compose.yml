@@ -1,16 +1,16 @@
 # Bull Board - Docker Compose
-# profiles: control（dashboard + control），worker（runner）
-# 使用方式: docker compose --profile control --profile worker up -d
-# 本地构建: 在仓库根执行 docker compose -f infra/docker/docker-compose.yml --profile control build
-# 然后: docker compose -f infra/docker/docker-compose.yml --profile control up -d
+# profiles: console（dashboard + console），worker（runner）
+# 使用方式: docker compose --profile console --profile worker up -d
+# 本地构建: 在仓库根执行 docker compose -f infra/docker/docker-compose.yml --profile console build
+# 然后: docker compose -f infra/docker/docker-compose.yml --profile console up -d
 
 services:
-  control:
-    image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-control:${IMAGE_TAG:-latest}
+  console:
+    image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-console:${IMAGE_TAG:-latest}
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile.control
-    container_name: bullboard-control
+      dockerfile: infra/docker/Dockerfile.console
+    container_name: bullboard-console
     restart: unless-stopped
     environment:
       PORT: 3000
@@ -21,14 +21,14 @@ services:
       - shared_worktrees:/shared/worktrees
       - shared_config:/shared/config
     ports:
-      - "${CONTROL_PORT:-3000}:3000"
+      - "${CONSOLE_PORT:-3000}:3000"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
     profiles:
-      - control
+      - console
 
   dashboard:
     image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-dashboard:${IMAGE_TAG:-latest}
@@ -40,10 +40,10 @@ services:
     ports:
       - "${DASHBOARD_PORT:-8080}:80"
     depends_on:
-      control:
+      console:
         condition: service_healthy
     profiles:
-      - control
+      - console
 
   runner:
     image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-runner:${IMAGE_TAG:-latest}
@@ -55,7 +55,7 @@ services:
     environment:
       SQLITE_PATH: /shared/data/bullboard.db
       ARTIFACTS_DIR: /shared/artifacts
-      API_BASE_URL: http://control:3000
+      API_BASE_URL: http://console:3000
       RUNNER_ID: runner-1
       MAX_CONCURRENCY: 1
       LEASE_SECONDS: 600
@@ -65,7 +65,7 @@ services:
       - shared_worktrees:/shared/worktrees
       - shared_config:/shared/config
     depends_on:
-      control:
+      console:
         condition: service_healthy
     profiles:
       - worker

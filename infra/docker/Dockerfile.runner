@@ -20,7 +20,7 @@ COPY --from=builder /app/runner .
 
 ENV SQLITE_PATH=/shared/data/bullboard.db
 ENV ARTIFACTS_DIR=/shared/artifacts
-ENV API_BASE_URL=http://control:3000
+ENV API_BASE_URL=http://console:3000
 ENV RUNNER_ID=runner-1
 ENV MAX_CONCURRENCY=1
 ENV LEASE_SECONDS=600

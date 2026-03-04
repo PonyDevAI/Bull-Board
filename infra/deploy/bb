@@ -7,7 +7,7 @@ set -e
 
 PREFIX="${BB_PREFIX:-/opt/bull-board}"
 PORT="${BB_PORT:-8888}"
-SVC_CONTROL="bb"
+SVC_CONSOLE="bb"
 SVC_RUNNER="bb-runner"
 
 usage() {
@@ -16,12 +16,12 @@ usage() {
   echo "用法: bb <command> [options]"
   echo ""
   echo "命令:"
-  echo "  install [all|control|runner]  安装（默认 all）"
-  echo "  upgrade [all|control|runner]  升级"
-  echo "  uninstall [all|control|runner] 卸载（默认保留 data，可用 --purge-data）"
+  echo "  install [all|console|runner]  安装（默认 all）"
+  echo "  upgrade [all|console|runner]  升级"
+  echo "  uninstall [all|console|runner] 卸载（默认保留 data，可用 --purge-data）"
   echo "  status                        服务状态"
-  echo "  logs [control|runner] [-f] [--lines N]  查看日志"
-  echo "  restart [control|runner|all]  重启服务"
+  echo "  logs [console|runner] [-f] [--lines N]  查看日志"
+  echo "  restart [console|runner|all]  重启服务"
   echo "  doctor                        环境检查"
   echo "  tls enable --self-signed      启用 TLS（自签证书）"
   echo "  tls enable --cert <path> --key <path>  启用 TLS（自定义证书）"
@@ -31,7 +31,7 @@ usage() {
   echo "  --mode local|docker  部署模式（默认 local）"
   echo "  --version latest|vX.Y.Z  版本（默认 latest）"
   echo "  --prefix <dir>  安装前缀（默认 /opt/bull-board）"
-  echo "  --port <port>   端口（默认 8888，仅 control）"
+  echo "  --port <port>   端口（默认 8888，仅 console）"
   echo "  --purge-data    仅 uninstall：同时删除 data 目录"
   echo ""
   echo "环境变量: BB_PREFIX, BB_PORT"
@@ -68,7 +68,7 @@ cmd_doctor() {
   fi
   if [ "$(uname -s)" = "Linux" ]; then
     echo "systemd: $(systemctl --version 2>/dev/null | head -1 || echo '不可用')"
-    systemctl is-active "$SVC_CONTROL" 2>/dev/null && echo "bb.service: active" || echo "bb.service: inactive/未安装"
+    systemctl is-active "$SVC_CONSOLE" 2>/dev/null && echo "bb.service: active" || echo "bb.service: inactive/未安装"
     systemctl is-active "$SVC_RUNNER" 2>/dev/null && echo "bb-runner.service: active" || echo "bb-runner.service: inactive/未安装"
   fi
   if curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/api/health" 2>/dev/null | grep -q 200; then
@@ -91,7 +91,7 @@ cmd_status() {
   echo ""
   if [ "$(uname -s)" = "Linux" ]; then
     echo "Services:"
-    for s in $SVC_CONTROL $SVC_RUNNER; do
+    for s in $SVC_CONSOLE $SVC_RUNNER; do
       local st; st="$(systemctl is-active "$s" 2>/dev/null)" || st="inactive"
       echo "  $s: $st"
     done
@@ -104,12 +104,12 @@ cmd_status() {
 
 cmd_logs() {
   parse_global_opts "$@"
-  local which="control"
+  local which="console"
   local follow=""
   local lines="100"
   for a in "${BB_ARGS[@]}"; do
     case "$a" in
-      control|runner) which="$a" ;;
+      console|runner) which="$a" ;;
       -f) follow="-f" ;;
       --lines) lines="${BB_ARGS[*]:1}"; shift ;;  # 简化：不解析 --lines N，用默认
     esac
@@ -118,7 +118,7 @@ cmd_logs() {
     echo "logs 仅支持 Linux (journalctl)"
     exit 1
   fi
-  local unit="$SVC_CONTROL"
+  local unit="$SVC_CONSOLE"
   [ "$which" = "runner" ] && unit="$SVC_RUNNER"
   journalctl -u "$unit" ${follow} -n "$lines" --no-pager
 }
@@ -131,16 +131,16 @@ cmd_restart() {
     exit 1
   fi
   if [ "$which" = "all" ]; then
-    systemctl restart "$SVC_CONTROL" "$SVC_RUNNER" 2>/dev/null || true
+    systemctl restart "$SVC_CONSOLE" "$SVC_RUNNER" 2>/dev/null || true
     echo "已重启 bb + bb-runner"
-  elif [ "$which" = "control" ]; then
-    systemctl restart "$SVC_CONTROL"
+  elif [ "$which" = "console" ]; then
+    systemctl restart "$SVC_CONSOLE"
     echo "已重启 bb"
   elif [ "$which" = "runner" ]; then
     systemctl restart "$SVC_RUNNER"
     echo "已重启 bb-runner"
   else
-    echo "用法: bb restart [control|runner|all]"
+    echo "用法: bb restart [console|runner|all]"
     exit 1
   fi
 }
@@ -152,7 +152,7 @@ cmd_tls() {
   mkdir -p "$PREFIX/config"
   if [ "$sub" = "disable" ]; then
     echo '{"tls":{"enabled":false}}' > "$config"
-    echo "已关闭 TLS。请执行: bb restart control"
+    echo "已关闭 TLS。请执行: bb restart console"
     return
   fi
   if [ "$sub" != "enable" ]; then
@@ -177,10 +177,10 @@ cmd_tls() {
     fi
     openssl req -x509 -newkey rsa:2048 -keyout "$key" -out "$cert" -days 365 -nodes -subj "/CN=bb"
     echo "{\"tls\":{\"enabled\":true,\"mode\":\"self-signed\",\"certPath\":\"$cert\",\"keyPath\":\"$key\"}}" > "$config"
-    echo "已启用 TLS（自签）。请执行: bb restart control"
+    echo "已启用 TLS（自签）。请执行: bb restart console"
   elif [ -n "$cert_path" ] && [ -n "$key_path" ]; then
     echo "{\"tls\":{\"enabled\":true,\"mode\":\"custom\",\"certPath\":\"$cert_path\",\"keyPath\":\"$key_path\"}}" > "$config"
-    echo "已启用 TLS（自定义证书）。请执行: bb restart control"
+    echo "已启用 TLS（自定义证书）。请执行: bb restart console"
   else
     echo "用法: bb tls enable --self-signed | bb tls enable --cert <path> --key <path>"
     exit 1

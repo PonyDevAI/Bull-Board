@@ -1,9 +1,9 @@
-# Bull Board - nginx reverse proxy（dashboard 反代 control）
+# Bull Board - nginx reverse proxy（dashboard 反代 console）
 # SSE 必须关闭 proxy_buffering，否则事件会延迟或丢失
-# 将 {{CONTROL_UPSTREAM}} 替换为 control 服务地址，如 127.0.0.1:3000
+# 将 {{CONSOLE_UPSTREAM}} 替换为 console 服务地址，如 127.0.0.1:3000
 
-upstream control_backend {
-    server {{CONTROL_UPSTREAM}};
+upstream console_backend {
+    server {{CONSOLE_UPSTREAM}};
 }
 
 server {
@@ -17,7 +17,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://control_backend;
+        proxy_pass http://console_backend;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -26,7 +26,7 @@ server {
     }
 
     location /api/events {
-        proxy_pass http://control_backend;
+        proxy_pass http://console_backend;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;

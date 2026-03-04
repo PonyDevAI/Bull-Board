@@ -1,5 +1,5 @@
-# Bull Board Control Plane（Go bb server + SQLite + SSE）
-# 构建上下文: 仓库根目录，例: docker build -f infra/docker/Dockerfile.control -t bullboard-control .
+# Bull Board Console（Go bb server + SQLite + SSE）
+# 构建上下文: 仓库根目录，例: docker build -f infra/docker/Dockerfile.console -t bullboard-console .
 
 FROM golang:1.21-alpine AS builder
 

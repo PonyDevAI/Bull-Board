@@ -26,7 +26,7 @@ usage() {
   echo "用法: $0 <install|upgrade|uninstall|status|version> [options]"
   echo "选项:"
   echo "  --mode local|docker    部署模式（默认 local）"
-  echo "  --component control|runner|all  组件（默认 all）"
+  echo "  --component console|runner|all  组件（默认 all）"
   echo "  --version latest|vX.Y.Z  版本（默认 latest）"
   echo "  --prefix <dir>         安装前缀（默认 /opt/bull-board）"
   echo "  --port <port>          端口（默认 8888）"
@@ -131,8 +131,8 @@ install_local() {
   rm -f "$PREFIX/current"
   ln -sf "$PREFIX/versions/$VERSION" "$PREFIX/current"
 
-  local want_control=false want_runner=false
-  [ "$COMPONENT" = "control" ] || [ "$COMPONENT" = "all" ] && want_control=true
+  local want_console=false want_runner=false
+  [ "$COMPONENT" = "console" ] || [ "$COMPONENT" = "all" ] && want_console=true
   [ "$COMPONENT" = "runner" ] || [ "$COMPONENT" = "all" ] && want_runner=true
 
   # 安装 bb、bb-runner 到 /usr/local/bin（全 Go 二进制在 current/ 下）
@@ -144,10 +144,10 @@ install_local() {
   [ -f "$SCRIPT_DIR/install.sh" ] && cp "$SCRIPT_DIR/install.sh" "$PREFIX/bin/" 2>/dev/null || true
 
   if [ "$(id -u)" = 0 ]; then
-    $want_control && sed "s|{{PREFIX}}|$PREFIX|g" "$TEMPLATES/systemd/bb.service.tpl" > /etc/systemd/system/bb.service
+    $want_console && sed "s|{{PREFIX}}|$PREFIX|g" "$TEMPLATES/systemd/bb.service.tpl" > /etc/systemd/system/bb.service
     $want_runner && sed "s|{{PREFIX}}|$PREFIX|g" "$TEMPLATES/systemd/bb-runner.service.tpl" > /etc/systemd/system/bb-runner.service
-    ($want_control || $want_runner) && systemctl daemon-reload
-    $want_control && systemctl enable --now bb
+    ($want_console || $want_runner) && systemctl daemon-reload
+    $want_console && systemctl enable --now bb
     $want_runner && systemctl enable --now bb-runner
     # 若存在初始凭证，则打印并将 runner_api_key 写入 bb.env，随后重启 runner
     local cred="$PREFIX/config/initial_credentials.txt"
