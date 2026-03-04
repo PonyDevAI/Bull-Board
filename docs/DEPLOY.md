@@ -73,10 +73,10 @@ curl -fsSL ... | bash -s install
 ```bash
 bb tls enable --self-signed    # 自签证书
 bb tls enable --cert /path/to/cert.pem --key /path/to/key.pem
-bb restart control
+bb restart console
 ```
 
-关闭 TLS：`bb tls disable`，然后 `bb restart control`。  
+关闭 TLS：`bb tls disable`，然后 `bb restart console`。  
 启用后 `bb status` 会输出 **https**://host:8888。
 
 ---

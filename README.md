@@ -94,8 +94,8 @@ curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/dep
 ```bash
 bb server            # 启动服务（systemd 下由 bb.service 调用）
 bb status            # 服务状态与 Panel 地址
-bb logs [control|runner] [-f] [--lines N]
-bb restart [control|runner|all]
+bb logs [console|runner] [-f] [--lines N]
+bb restart [console|runner|all]
 bb doctor
 bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls disable | bb tls status
 ```
@@ -124,7 +124,7 @@ bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls 
    ```bash
    ~/go/bin/air
    ```
-2. **bb-runner**（与 control 通信，需与 server 使用相同数据目录）  
+2. **bb-runner**（与 console 通信，需与 server 使用相同数据目录）  
    ```bash
    ~/go/bin/air -c .air.runner.toml
    ```
@@ -133,6 +133,6 @@ bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls 
    cd apps/dashboard && pnpm dev
    ```
 
-前端开发时把 `apps/dashboard/vite.config.ts` 里 proxy 目标改为 `http://localhost:8888`（若之前指向 3000 的旧 Node control，需改一次）。访问 http://localhost:5173 即可；改 Go 代码会由 Air 自动重新编译并重启，改前端代码由 Vite HMR 热更新。
+前端开发时把 `apps/dashboard/vite.config.ts` 里 proxy 目标改为 `http://localhost:8888`（若之前指向 3000 的旧 Node console，需改一次）。访问 http://localhost:5173 即可；改 Go 代码会由 Air 自动重新编译并重启，改前端代码由 Vite HMR 热更新。
 
 方案与 PR 说明见 [docs/PLAN.md](docs/PLAN.md) 及 `docs/PR-*.md`。

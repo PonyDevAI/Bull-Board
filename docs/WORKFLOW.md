@@ -16,7 +16,7 @@
 ## 3. VERIFY（验证）
 
 - 每个 PR 必须提供：本地验证命令、预期输出。
-- 必须跑过：Lint、Build（至少 control + dashboard；改 runner 则 go build）、Test（若存在）。
+- 必须跑过：Lint、Build（至少 console + dashboard；改 runner 则 go build）、Test（若存在）。
 - 部署/安装相关 PR 需在目标环境（local 或 docker）做一次验证。
 
 ## 4. RELEASE（发布）

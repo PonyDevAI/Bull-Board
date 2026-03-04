@@ -1,10 +1,10 @@
-# Dashboard 与 Control 连接说明
+# Dashboard 与 Console 连接说明
 
-Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/api` 接口。
+Dashboard（前端）通过 HTTP 请求和 SSE 连接 Console（后端）的 `/api` 接口。
 
 ## 1. 接口约定
 
-- **Control** 默认端口 **8888**，提供：
+- **Console** 默认端口 **8888**，提供：
   - `GET/POST /api/workspaces`、`GET /api/workspaces/:id`
   - `GET/POST /api/tasks`、`GET/POST /api/tasks/:id`、`/api/tasks/:id/status|messages|runs|enqueue`、`/api/tasks/:id/actions/*`
   - `GET /api/runs/:run_id/artifacts`、`GET /api/artifacts/:id/download`
@@ -14,7 +14,7 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
 
 ## 2. 开发环境（本地联调）
 
-1. 先启动 **Control**（Go 版 bb server，提供 API）：
+1. 先启动 **Console**（Go 版 bb server，提供 API）：
    ```bash
    # 构建一次二进制
    go build -o bb ./cmd/bb
@@ -29,7 +29,7 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
    cd apps/dashboard && pnpm dev
    # 打开 http://localhost:5173
    ```
-3. Vite 配置（`apps/dashboard/vite.config.ts`）中已把 `/api` 和 `/api/events` 代理到 `http://localhost:8888`，因此页面里的请求会发到 Control，**无需改代码**。
+3. Vite 配置（`apps/dashboard/vite.config.ts`）中已把 `/api` 和 `/api/events` 代理到 `http://localhost:8888`，因此页面里的请求会发到 Console，**无需改代码**。
 
 ## 3. 生产环境（同源部署，推荐）
 
@@ -43,19 +43,19 @@ Dashboard（前端）通过 HTTP 请求和 SSE 连接 Control（后端）的 `/a
 
 ## 4. 生产环境（前后端分离 / 跨域）
 
-- 若 Dashboard 和 Control **不同域**（例如前端在 CDN，API 在 `https://api.example.com`）：
-  1. 构建时指定 Control 的基址（无末尾斜杠）：
+- 若 Dashboard 和 Console **不同域**（例如前端在 CDN，API 在 `https://api.example.com`）：
+  1. 构建时指定 Console 的基址（无末尾斜杠）：
      ```bash
      cd apps/dashboard
      VITE_API_BASE=https://api.example.com pnpm build
      ```
   2. 打包后所有请求会发往 `https://api.example.com/api/...`，SSE 会连 `https://api.example.com/api/events`。
-  3. Control 需配置 CORS 允许该前端域名（若尚未配置）。
+  3. Console 需配置 CORS 允许该前端域名（若尚未配置）。
 
 ## 5. 小结
 
 | 场景           | 做法 |
 |----------------|------|
-| 本地开发       | 先起 control:8888，再起 dashboard；Vite 代理 `/api` → control |
-| 生产同源       | Control 用 `STATIC_DIR` / `DASHBOARD_DIST` 托管 dashboard dist，同端口 |
-| 生产跨域       | 构建时设 `VITE_API_BASE=https://control 的地址`，Control 开 CORS |
+| 本地开发       | 先起 console:8888，再起 dashboard；Vite 代理 `/api` → console |
+| 生产同源       | Console 用 `STATIC_DIR` / `DASHBOARD_DIST` 托管 dashboard dist，同端口 |
+| 生产跨域       | 构建时设 `VITE_API_BASE=https://console 的地址`，Console 开 CORS |

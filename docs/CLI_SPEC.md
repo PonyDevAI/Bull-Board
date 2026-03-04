@@ -8,10 +8,10 @@
 
 | 命令 | 说明 |
 |------|------|
-| `bb server` | 启动 Control Plane 服务（端口 8888；systemd 下由 bb.service 调用） |
+| `bb server` | 启动 Console 控制台服务（端口 8888；systemd 下由 bb.service 调用） |
 | `bb status` | 服务状态与 Panel 地址 |
-| `bb logs [control\|runner] [-f] [--lines N]` | 查看日志（Linux journalctl） |
-| `bb restart [control\|runner\|all]` | 重启服务 |
+| `bb logs [console\|runner] [-f] [--lines N]` | 查看日志（Linux journalctl） |
+| `bb restart [console\|runner\|all]` | 重启服务 |
 | `bb doctor` | 环境检查 |
 | `bb version` | 显示版本号 |
 | `bb tls enable --self-signed` | 启用 TLS（自签证书） |
@@ -39,14 +39,14 @@ bb server --prefix /opt/bull-board
 bb status
 
 # 查看 bb 服务日志（最近 200 行）
-bb logs control --lines 200
+bb logs console --lines 200
 
 # 实时日志
-bb logs control -f
+bb logs console -f
 
 # 重启
 bb restart all
-bb restart control
+bb restart console
 
 # 环境检查
 bb doctor
@@ -56,10 +56,10 @@ bb version
 
 # TLS
 bb tls enable --self-signed
-bb restart control
+bb restart console
 bb tls status
 bb tls disable
-bb restart control
+bb restart console
 ```
 
 ---

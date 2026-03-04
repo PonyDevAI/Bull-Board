@@ -170,15 +170,16 @@ SSE:
 ## 6. 目录结构
 bull-board/
   cmd/
-    bb/                # Go 控制平面入口（bb server）
+    bb/                # Go Console 入口（bb server）
     bb-runner/         # Go Runner 入口
   internal/
-    control/           # 控制平面实现（API + 状态机 + SQLite + SSE）
+    console/           # Console 控制台实现（API + 状态机 + SQLite + SSE）
     runner/            # Runner 实现
   apps/
     dashboard/         # 前端（Vite + React）
   docs/
     PLAN.md
+    ARCHITECTURE.md    # 权威架构：Company/Workspace/Dashboard、Agent/Runner/Worker
   artifacts/           # 默认 artifacts 落盘目录
   data/
     db/bb.sqlite       # SQLite DB 文件（可配置，或由 SQLITE_PATH 覆盖）

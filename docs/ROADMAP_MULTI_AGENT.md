@@ -15,7 +15,7 @@
 
 ## 阶段 1：多项目（Multi-Project）
 
-**目标**：一个 Control 管理多个「项目」，每个项目可视为当前 Workspace 的扩展（或 Project = Workspace 的别名）。
+**目标**：一个 Console 管理多个「项目」，每个项目可视为当前 Workspace 的扩展（或 Project = Workspace 的别名）。架构定义见 docs/ARCHITECTURE.md。
 
 1. **数据与 API**
    - 保留/扩展 `workspaces` 为「项目」维度；或新增 `projects` 表，与 workspace 1:1 或 N:1。
@@ -35,9 +35,9 @@
 1. **数据与配置**
    - 新增 `models` 配置（或表）：id、name、provider、model_id、api_key_ref、max_tokens、默认开关等。
    - 任务/运行层：在 task 或 run 上增加 `model_id`（或 plan_model_id / review_model_id），便于追溯与重放。
-2. **Control API**
+2. **Console API**
    - `GET /api/models`：列出可用模型（来自配置或 DB）。
-   - 创建/更新任务时可选 `model_id`；Runner 或 Agent 执行时读取该字段调用对应模型。
+   - 创建/更新任务时可选 `model_id`；Worker（Agent+Runner 绑定）执行时读取该字段调用对应模型。Runner 为执行器进程，见 ARCHITECTURE.md。
 3. **Dashboard**
    - Settings → Models：模型的增删改查（名称、provider、model_id、限流等）。
    - 创建任务 / Task 详情：模型选择下拉；Task 详情展示「本次使用的模型」。
@@ -58,7 +58,7 @@
    - API：`GET /api/agents`、任务创建/运行时可指定或自动选择 Agent。
 3. **Runner 与编排**
    - 单 Runner 时：Runner 内按 `agent_id` 或 job type 选择不同执行逻辑（不同模型、不同 prompt）。
-   - 多 Runner 时：不同 Runner 注册为不同 Agent，Control 将 job 派发给对应 Agent 的 Runner。
+   - 多 Runner 时：不同 Runner 注册为不同 Agent，形成多个 Worker；Console 将 job 派发给对应 Worker（见 docs/ARCHITECTURE.md）。
 4. **Dashboard**
    - Settings → Agents：Agent 的增删改查、绑定模型与 job 类型。
    - 看板/任务详情：展示「当前阶段 / 当前 Run 由哪个 Agent 执行」；可选按 Agent 筛选任务。

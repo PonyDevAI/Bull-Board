@@ -8,7 +8,7 @@
 
 - [ ] **Lint 通过**：执行项目配置的 lint（如 `pnpm lint`、`eslint`、`go vet`），无报错。
 - [ ] **Build 通过**：与改动相关的构建成功：
-  - 改 control/dashboard：`pnpm build:control`、`pnpm build:dashboard` 无报错。
+  - 改 console/dashboard：`pnpm build:console`、`pnpm build:dashboard` 无报错。
   - 改 runner：`cd apps/runner && go build -o runner` 无报错。
 - [ ] **Test**（若存在）：与本次改动相关的测试通过；若项目暂无 test，在 PR 中说明即可。
 
@@ -36,7 +36,7 @@
 
 - [ ] 未修改 shared 数据目录内容；未提交密钥/密码。
 - [ ] 未引入 Postgres/Redis；仍使用 SQLite + SQLite jobs。
-- [ ] 对外命名仅使用 dashboard/control/runner；无 api/web/runner-go。
+- [ ] 对外命名仅使用 dashboard/console/runner；无 api/web/runner-go。
 
 ---
 
