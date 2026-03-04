@@ -21,11 +21,10 @@ Done/Failed 后通过 Actions 完成闭环：
 - 系统事实源：workspaces/tasks/runs/artifacts/messages/actions
 - 队列：jobs 表（替代 Redis 队列/Streams）
 
-3) Go Runner（常驻二进制）
-- 从 SQLite jobs 表“领取 job”（原子加锁/租约）
-- 执行 job：CODE_CHANGE（v0.1 只做 apply_patch）、VERIFY（Testing）、SUBMIT（commit/push）
-- 保存 artifacts（diff/log/report）到本地目录
-- 写回 runs 与 jobs 状态；可选调用 API 回调 `POST /api/runner/report` 上报结果，API 据此推送 SSE
+3) Go Runner（执行器进程，非 Agent）
+- 从 SQLite jobs 表按 **assigned_worker_id** 领取属于本 Runner 绑定 workers 的 job（原子租约）；详见 docs/ARCHITECTURE.md 方案 A 与拉取规则。
+- 执行 job：CODE_CHANGE/VERIFY/SUBMIT 等；双层并发（runner.max_concurrency + worker.max_concurrency）、每 job 独立 workdir。
+- 保存 artifacts 并 `POST /api/jobs/{id}/report` 上报；Console 更新 job 与 worker 状态。
 
 4) Web Console（Vite + React + TS + Tailwind + shadcn/ui）
 - Workspace selector

@@ -50,15 +50,13 @@
 **目标**：不同「Agent」负责不同阶段或不同类型任务（例如 Plan Agent、Code Agent、Review Agent），支持多 Agent 协作编排。
 
 1. **抽象**
-   - **Agent**：一种执行角色，绑定到一种或多种 job 类型（如 CODE_CHANGE、VERIFY、REVIEW），可绑定默认模型、超时、重试策略。
-   - 可选：Agent 与「能力」绑定（例如只做前端、只做测试），用于路由与展示。
+   - **Agent**：员工档案（静态配置），绑定 roles、model、prompt、job 类型、超时等。与 Runner 绑定后形成 **Worker**（派单对象）；Runner 是进程，不是 Agent。见 docs/ARCHITECTURE.md。
+   - **方案 A**：一个 Runner 可绑定多个 Agent，形成多个 Worker；jobs 强指派 `assigned_worker_id`。
 2. **数据与 API**
-   - 新增 `agents` 表或配置：id、name、job_types[]、default_model_id、timeout、retry_policy 等。
-   - jobs 表增加 `agent_id`（或由 Control 根据 job type + 策略派发到某 Agent）。
-   - API：`GET /api/agents`、任务创建/运行时可指定或自动选择 Agent。
+   - 新增 `agents`、`runners`、`workers` 表；jobs 表增加 `assigned_worker_id`（必填）。
+   - Console 创建 job 时指定 assigned_worker_id；API：`GET /api/agents`、`GET /api/workers`、`GET /api/runners`。
 3. **Runner 与编排**
-   - 单 Runner 时：Runner 内按 `agent_id` 或 job type 选择不同执行逻辑（不同模型、不同 prompt）。
-   - 多 Runner 时：不同 Runner 注册为不同 Agent，形成多个 Worker；Console 将 job 派发给对应 Worker（见 docs/ARCHITECTURE.md）。
+   - Runner 拉取仅限属于其绑定 workers 的 jobs；执行时 goroutine + 双层并发 + 独立 workdir（见 ARCHITECTURE.md）。
 4. **Dashboard**
    - Settings → Agents：Agent 的增删改查、绑定模型与 job 类型。
    - 看板/任务详情：展示「当前阶段 / 当前 Run 由哪个 Agent 执行」；可选按 Agent 筛选任务。

@@ -13,7 +13,7 @@
 
 - 数据与密钥：不允许改 shared 数据目录内容；不允许提交密钥、Token、密码。
 - 技术栈：不允许引入 Postgres/Redis。当前版本使用 SQLite + SQLite jobs 队列表。
-- 命名规范：对外与文档、部署、脚本仅使用 dashboard（前端）、console（Console 控制台服务）、runner（Go 执行器）。禁止出现 api/web/runner-go 作为对外名称。
+- 命名规范：对外与文档、部署、脚本仅使用 dashboard（前端）、console（Console 控制台服务）、runner（执行器进程）、worker（员工上线实体）。禁止出现 api/web/runner-go 作为对外名称。术语一致：runner=进程，worker=Agent+Runner 绑定后的派单对象，agent=员工档案。
 - 文档与部署：所有变更必须更新对应文档；若影响部署或安装，必须同步更新 install.sh 与 DEPLOY.md（及 CI/Release 若适用）。
 
 ## 3. 每个 PR 输出格式

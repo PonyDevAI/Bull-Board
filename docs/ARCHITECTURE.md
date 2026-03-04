@@ -20,35 +20,52 @@
 
 ### 1.3 Console / Runner / Worker / Agent
 
-- **Console**：控制台服务（Go bb server）。提供 API、状态机、SQLite、SSE；任务与队列管理、鉴权、静态托管。部署产物名：bullboard-console。
-- **Runner**：执行器进程/客户端。常驻二进制，与 Console 通信（heartbeat / poll / report），从队列领取 job 并执行。部署产物名：bullboard-runner。**Runner 不是 Agent**；Runner 是进程/二进制。
-- **Worker**：Agent + Runner 绑定后的「上线员工」业务实体，是派单对象。一个 Worker 对应一个已注册、可接单的执行能力（例如某台机器上的某个 Runner 注册为某 Agent 类型）。
-- **Agent**：一种执行角色或能力类型（如 Plan Agent、Code Agent、Review Agent），可绑定模型、job 类型、超时与重试策略。Agent 与 Runner 绑定后形成 Worker，用于任务编排与派单。
+- **Console**：控制台服务（Go bb server）。负责 API、状态机、审计、看板、🧠方案组对话流水与生成执行编排 jobs。部署产物名：bullboard-console。
+- **Runner**：执行器进程/客户端（动态实体）。常驻二进制，与 Console 通信（heartbeat / capabilities / load）；可部署本机或远程。**Runner 不是 Agent**；Runner 是进程。
+- **Agent**：员工档案（静态配置）。含 roles、model、prompt、tool_profile、权限等；不跑任务，与 Runner 绑定后才形成 Worker。
+- **Worker**：员工上线实体 = Agent + Runner 绑定，是派单对象。执行 jobs 强指派 `assigned_worker_id`。同一 Runner 可绑定多个 Agent，形成多个 Worker（方案 A，见下）。
 
 ---
 
-## 2. 任务与队列
+## 2. 方案 A：一个 Runner 绑定多个 Worker
 
-### 2.1 jobs 与 assigned_worker_id
+- **绑定关系**：`workers` 表中 `agent_id` 唯一、`runner_id` 不唯一；即一个 Runner 进程可绑定多个 Agent，对应多行 worker（同一 `runner_id` 多行 worker）。
+- **拉取规则**：Runner 拉取 job 时，仅能领取 `assigned_worker_id IN ( 该 runner_id 下的所有 worker_id )` 且 `status=queued` 且可获得租约的 jobs；在 DB 中原子地将 job 标记为 running 并写入 `lease_until`。
+- **续租/回收**：Runner 心跳可携带当前 job ids 续租，或 `POST /api/jobs/{id}/lease/renew`；超过 `lease_until` 的 running job 回收为 queued（或按策略 failed）。
 
-- **jobs** 表：队列中的作业；可强指派到具体 Worker。
-- **jobs.assigned_worker_id**：强指派字段；若非空，仅该 Worker 可领取该 job。
-- **Runner 拉取规则**：Runner 拉取 job 时需匹配自身对应的 Worker（及可选 agent_id / job_type）；若 job 有 assigned_worker_id，则仅该 Worker 可领。
-- **Worker 在线/忙碌规则**：Worker 通过 heartbeat 上报在线状态；忙碌状态可由「当前正在执行的 job 数」或显式状态字段表示，用于调度与限流。
+---
 
-### 2.2 方案组（plan）
+## 3. 任务与队列
+
+### 3.1 jobs 与 assigned_worker_id
+
+- **jobs** 表：队列中的作业；**必须强指派** `assigned_worker_id`（NOT NULL）。Console 创建 job 时指定；后续可扩展自动挑选。
+- **Runner 拉取**：`GET /api/runner/pull?runner_id=...` 返回仅属于该 Runner 所绑定 workers 的 queued jobs，并原子写 lease。
+- **report**：`POST /api/jobs/{id}/report`（status + summary + artifacts refs + logs）；Console 更新 job 状态与 `worker.current_job_id`。
+
+### 3.2 Runner 执行模型（goroutine + 双层并发 + 独立 workdir）
+
+- **启动流程**：register → heartbeat loop → pull loop。
+- **双层并发限制**：
+  - **runner.max_concurrency**（机器级）：全局 semaphore，限制该 Runner 进程同时执行的 job 数。
+  - **worker.max_concurrency**（员工级，默认 1）：每个 worker 的 semaphore；每个 job 在对应 worker 上占一槽。
+- **独立 workdir**：每个 job 使用单独目录，例如 `/work/<company>/<workspace>/<task>/<job>/`，在该目录 clone/worktree repo，避免 repo 串扰。后续可扩展容器隔离；当前为 workdir 隔离 + 软隔离（命令白名单/可写路径/超时）。
+- **超时**：每个 job 有 timeout，Runner 必须 kill 并 report failed。
+- **artifacts**：stdout/stderr、关键输出文件写入 artifacts 目录并回传 Console（至少 log 文本或文件 uri）。
+
+### 3.3 方案组（plan）
 
 - 流程：proposer → 用户确认 → plan_reviewer → judge → 用户最终确认 → 生成 jobs。
 - 产出：计划、评审结果、以及要下发给执行组的 jobs。
 
-### 2.3 执行组（exec）
+### 3.4 执行组（exec）
 
 - 角色：coder、test、code_reviewer 等，由 **Worker** 执行。
 - 行为：领取 job、执行、回报 artifacts/run 状态；Console 据此更新 runs/artifacts 并推送 SSE。
 
 ---
 
-## 3. 与文档的对应关系
+## 4. 与文档的对应关系
 
 - 对外命名与部署产物：见 **docs/NAMING.md**。
 - 单机 v0.1 方案与 SQLite 队列：见 **docs/PLAN.md**。
