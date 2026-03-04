@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  apps/control:
+  apps/console:
     dependencies:
       '@fastify/static':
         specifier: ^7.0.4

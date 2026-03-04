@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm dev:control & pnpm dev:dashboard",
-    "dev:control": "pnpm --filter @bullboard/control dev",
+    "dev": "pnpm dev:console & pnpm dev:dashboard",
+    "dev:console": "pnpm --filter @bullboard/console dev",
     "dev:dashboard": "pnpm --filter @bullboard/dashboard dev",
-    "build": "pnpm build:control && pnpm build:dashboard",
-    "build:control": "pnpm --filter @bullboard/control build",
+    "build": "pnpm build:console && pnpm build:dashboard",
+    "build:console": "pnpm --filter @bullboard/console build",
     "build:dashboard": "pnpm --filter @bullboard/dashboard build"
   },
   "engines": { "node": ">=18" },

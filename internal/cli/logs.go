@@ -12,7 +12,7 @@ var logsLines int
 
 func NewLogsCmd() *cobra.Command {
 	cc := &cobra.Command{
-		Use:   "logs [control|runner]",
+		Use:   "logs [console|runner]",
 		Short: "查看服务日志（journalctl）",
 		RunE:  runLogs,
 	}
@@ -23,8 +23,15 @@ func NewLogsCmd() *cobra.Command {
 
 func runLogs(c *cobra.Command, args []string) error {
 	which := "bb"
-	if len(args) > 0 && args[0] == "runner" {
-		which = "bb-runner"
+	if len(args) > 0 {
+		switch args[0] {
+		case "runner":
+			which = "bb-runner"
+		case "console":
+			which = "bb"
+		default:
+			which = "bb"
+		}
 	}
 	argsExec := []string{"-u", which, "-n", fmt.Sprintf("%d", logsLines), "--no-pager"}
 	if logsFollow {

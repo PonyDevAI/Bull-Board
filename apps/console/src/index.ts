@@ -59,7 +59,7 @@ await app.register(eventsRoutes);
 await app.register(runnerRoutes);
 await app.register(actionsRoutes);
 
-// Dashboard 静态托管：优先使用环境变量，否则相对 control 的 dist 找 dashboard/dist
+// Dashboard 静态托管：优先使用环境变量，否则相对 console 的 dist 找 dashboard/dist
 const staticRoot =
   process.env.STATIC_DIR ||
   process.env.DASHBOARD_DIST ||

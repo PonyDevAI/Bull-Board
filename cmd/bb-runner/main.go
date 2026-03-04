@@ -1,4 +1,4 @@
-// bb-runner：Runner/Worker Plane，与 control 通信（heartbeat/poll/report）
+// bb-runner：Runner/Worker Plane，与 console 通信（heartbeat/poll/report）
 package main
 
 import (

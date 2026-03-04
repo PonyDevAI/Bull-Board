@@ -457,7 +457,7 @@ function UpdatesSection() {
             label="升级后观察"
             description="升级完成后，可在 Control 日志中确认服务重启与迁移输出。"
             action={
-              <Link to="/dashboard/logs?unit=control" className={btnSecondary}>
+              <Link to="/dashboard/logs?unit=console" className={btnSecondary}>
                 打开 Control 日志
               </Link>
             }

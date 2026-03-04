@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/PonyDevAI/Bull-Board/internal/control"
+	"github.com/PonyDevAI/Bull-Board/internal/console"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ func NewVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "显示版本号",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("bb", control.Version)
+			fmt.Println("bb", console.Version)
 		},
 	}
 }

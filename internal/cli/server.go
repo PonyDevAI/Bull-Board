@@ -7,14 +7,14 @@ import (
 	"syscall"
 
 	"github.com/PonyDevAI/Bull-Board/internal/common"
-	"github.com/PonyDevAI/Bull-Board/internal/control"
+	"github.com/PonyDevAI/Bull-Board/internal/console"
 	"github.com/spf13/cobra"
 )
 
 func NewServerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
-		Short: "启动 Control Plane 服务（端口 8888）",
+		Short: "启动 Console 控制台服务（端口 8888）",
 		RunE:  runServer,
 	}
 	return cmd
@@ -28,12 +28,12 @@ func runServer(cmd *cobra.Command, args []string) error {
 	if port > 0 {
 		cfg.Port = port
 	}
-	srv := control.NewServer(cfg)
+	srv := console.NewServer(cfg)
 	db, dbPath, err := common.OpenDB(prefix)
 	if err == nil {
 		defer db.Close()
 		srv.SetDB(db, dbPath)
-		if err := control.EnsureFirstUser(db, prefix); err != nil {
+		if err := console.EnsureFirstUser(db, prefix); err != nil {
 			return err
 		}
 	}

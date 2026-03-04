@@ -1,4 +1,4 @@
-package control
+package console
 
 import (
 	"encoding/json"

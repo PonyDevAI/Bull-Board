@@ -1,4 +1,4 @@
-/** 与 control 连接：默认同源 /api；独立 control 时设 VITE_API_BASE，如 https://control.example.com */
+/** 与 console 连接：默认同源 /api；独立 console 时设 VITE_API_BASE，如 https://console.example.com */
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
 const API = API_BASE + "/api";
 
@@ -135,7 +135,7 @@ export async function getSystemUpdate(): Promise<SystemUpdate> {
 }
 
 export type SystemLogsResponse = {
-  unit: "control";
+  unit: "console";
   lines: number;
   content: string;
 };

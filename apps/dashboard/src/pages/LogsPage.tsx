@@ -24,10 +24,10 @@ export function LogsPage() {
 
   useEffect(() => {
     const unit = searchParams.get("unit");
-    if (unit && unit !== "control") {
+    if (unit && unit !== "console") {
       setSearchParams((prev) => {
         const p = new URLSearchParams(prev);
-        p.set("unit", "control");
+        p.set("unit", "console");
         return p;
       });
     }
@@ -76,7 +76,7 @@ export function LogsPage() {
     stopTail();
     const base = getApiBase();
     const params = new URLSearchParams();
-    params.set("unit", "control");
+    params.set("unit", "console");
     if (since) params.set("since", since);
     if (query) params.set("query", query);
     const url = (base || "") + `/api/system/logs/stream?${params.toString()}`;

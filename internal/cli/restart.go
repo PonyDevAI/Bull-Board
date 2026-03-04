@@ -9,7 +9,7 @@ import (
 
 func NewRestartCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "restart [control|runner|all]",
+		Use:   "restart [console|runner|all]",
 		Short: "重启服务",
 		RunE:  runRestart,
 	}
@@ -24,12 +24,12 @@ func runRestart(cmd *cobra.Command, args []string) error {
 	switch which {
 	case "all":
 		svcs = []string{"bb", "bb-runner"}
-	case "control":
+	case "console":
 		svcs = []string{"bb"}
 	case "runner":
 		svcs = []string{"bb-runner"}
 	default:
-		return fmt.Errorf("用法: bb restart [control|runner|all]")
+		return fmt.Errorf("用法: bb restart [console|runner|all]")
 	}
 	for _, s := range svcs {
 		if err := exec.Command("systemctl", "restart", s).Run(); err != nil {

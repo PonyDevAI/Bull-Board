@@ -1,4 +1,4 @@
-package control
+package console
 
 import (
 	"bufio"
@@ -200,14 +200,14 @@ func normalizeSince(s string) string {
 	}
 }
 
-// systemLogs 返回 Control(unit=bb) 的最近 N 行日志
+// systemLogs 返回 Console(unit=bb) 的最近 N 行日志
 func (s *Server) systemLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || r.URL.Path != "/api/system/logs" {
 		http.NotFound(w, r)
 		return
 	}
 	unitParam := r.URL.Query().Get("unit")
-	if unitParam != "" && unitParam != "control" {
+	if unitParam != "" && unitParam != "console" {
 		writeJSONError(w, "invalid unit", http.StatusBadRequest)
 		return
 	}
@@ -263,7 +263,7 @@ func (s *Server) systemLogs(w http.ResponseWriter, r *http.Request) {
 			}
 			content = strings.Join(filtered, "\n")
 			resp := systemLogsResponse{
-				Unit:    "control",
+				Unit:    "console",
 				Lines:   lines,
 				Content: content,
 			}
@@ -279,7 +279,7 @@ func (s *Server) systemLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	content := string(out)
 	resp := systemLogsResponse{
-		Unit:    "control",
+		Unit:    "console",
 		Lines:   lines,
 		Content: content,
 	}
@@ -293,7 +293,7 @@ func (s *Server) systemLogsStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	unitParam := r.URL.Query().Get("unit")
-	if unitParam != "" && unitParam != "control" {
+	if unitParam != "" && unitParam != "console" {
 		writeJSONError(w, "invalid unit", http.StatusBadRequest)
 		return
 	}
