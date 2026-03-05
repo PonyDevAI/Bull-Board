@@ -1,7 +1,7 @@
-# Bull Board — v0.1 方案文档（SQLite + SQLite Queue + Go Runner）
+# Bull Board — v0.1 方案文档（SQLite + SQLite Queue + Go Person）
 
 ## 0. 目标
-在单台开发服务器上提供一个 Web 控制台（看板），管理“改代码任务”，并把任务派发给 Go Runner 执行。所有数据与队列都本地化，不依赖 Postgres/Redis。
+在单台开发服务器上提供一个 Web 控制台（看板），管理“改代码任务”，并把任务派发给 **Person 执行器**（bb-person，type=self）执行。所有数据与队列都本地化，不依赖 Postgres/Redis。执行器已全面改名为 Person，见 **docs/MASTER_PLAN_RUNNER_TO_PERSON_AND_CONSOLE.md**。
 
 看板流程固定：
 Plan/Draft → Pending → In Progress → Review → Testing → Done/Failed
@@ -21,9 +21,9 @@ Done/Failed 后通过 Actions 完成闭环：
 - 系统事实源：workspaces/tasks/runs/artifacts/messages/actions
 - 队列：jobs 表（替代 Redis 队列/Streams）
 
-3) Go Runner（执行器进程，非 Agent）
-- 从 SQLite jobs 表按 **assigned_worker_id** 领取属于本 Runner 绑定 workers 的 job（原子租约）；详见 docs/ARCHITECTURE.md 方案 A 与拉取规则。
-- 执行 job：CODE_CHANGE/VERIFY/SUBMIT 等；双层并发（runner.max_concurrency + worker.max_concurrency）、每 job 独立 workdir。
+3) Person（执行器进程，type=self 即 bb-person，非 Agent）
+- 从 SQLite jobs 表按 **assigned_worker_id** 领取属于本 Person 绑定 workers 的 job（原子租约）；详见 docs/ARCHITECTURE.md 方案 A 与拉取规则。
+- 执行 job：CODE_CHANGE/VERIFY/SUBMIT 等；双层并发（person.max_concurrency + worker.max_concurrency）、每 job 独立 workdir。
 - 保存 artifacts 并 `POST /api/jobs/{id}/report` 上报；Console 更新 job 与 worker 状态。
 
 4) Web Console（Vite + React + TS + Tailwind + shadcn/ui）
@@ -48,13 +48,13 @@ Done/Failed 后通过 Actions 完成闭环：
 - available_at (datetime)  # 支持 delay/backoff
 - attempts (int default 0)
 - max_attempts (int default 3)
-- locked_by (text nullable)  # runner_id
+- locked_by (text nullable)  # person_id（执行器）
 - locked_until (datetime nullable) # 租约超时
 - last_error (text nullable)
 - created_at (datetime)
 - updated_at (datetime)
 
-### 2.2 领取 job 的原子流程（Go Runner）
+### 2.2 领取 job 的原子流程（Person）
 关键原则：单机多进程下也要避免重复领取同一个 job。
 
 建议使用事务 + BEGIN IMMEDIATE（拿写锁）：
@@ -109,7 +109,7 @@ Done/Failed Actions（手动触发）：
 
 ---
 
-## 4. Runner Payload（v0.1）
+## 4. Person Payload（v0.1）
 
 ### CODE_CHANGE（apply_patch）
 {
@@ -170,15 +170,15 @@ SSE:
 bull-board/
   cmd/
     bb/                # Go Console 入口（bb server）
-    bb-runner/         # Go Runner 入口
+    bb-person/         # Person 执行器入口
   internal/
     console/           # Console 控制台实现（API + 状态机 + SQLite + SSE）
-    runner/            # Runner 实现
+    person/            # Person 实现（internal/person）
   apps/
     dashboard/         # 前端（Vite + React）
   docs/
     PLAN.md
-    ARCHITECTURE.md    # 权威架构：Company/Workspace/Dashboard、Agent/Runner/Worker
+    ARCHITECTURE.md    # 权威架构：Company/Workspace/Dashboard、Agent/Person/Worker
   artifacts/           # 默认 artifacts 落盘目录
   data/
     db/bb.sqlite       # SQLite DB 文件（可配置，或由 SQLITE_PATH 覆盖）

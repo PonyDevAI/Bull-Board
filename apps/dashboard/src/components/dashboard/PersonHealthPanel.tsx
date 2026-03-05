@@ -2,18 +2,18 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-type Runner = { name: string; status: string; used: number; total: number; lastHeartbeat: string; lastError: string };
+type Person = { name: string; status: string; used: number; total: number; lastHeartbeat: string; lastError: string };
 
-export function RunnerHealthPanel(p: { runners: Runner[]; className?: string }) {
-  const { runners, className } = p;
+export function PersonHealthPanel(p: { persons: Person[]; className?: string }) {
+  const { persons, className } = p;
   return (
     <Card className={cn("p-4", className)}>
       <CardHeader className="p-0 pb-3">
-        <h3 className="text-lg font-medium text-foreground">Runner Health</h3>
+        <h3 className="text-lg font-medium text-foreground">执行器健康 (Person)</h3>
       </CardHeader>
       <CardContent className="p-0">
         <div className="space-y-inner">
-          {runners.map((r) => (
+          {persons.map((r) => (
             <div key={r.name} className="rounded-global-sm border border-border bg-muted/30 p-3">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">{r.name}</span>

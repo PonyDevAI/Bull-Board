@@ -38,7 +38,7 @@ func findInstallSh() (string, error) {
 
 func NewUpgradeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "upgrade [all|console|runner]",
+		Use:   "upgrade [all|console|person]",
 		Short: "升级（委托 install.sh，默认 all）",
 		Long:  "从当前仓库或 prefix/bin 的 install.sh 执行升级。",
 		RunE:  runUpgrade,
@@ -74,7 +74,7 @@ func NewUninstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Short: "卸载（委托 install.sh，默认保留 data）",
-		Long:  "停止并移除 systemd 服务与 current 链接；加 --purge-data 会删除 data/、config/、versions/。完全卸掉还需手动删除二进制：rm -f /usr/local/bin/bb /usr/local/bin/bb-runner",
+		Long:  "停止并移除 systemd 服务与 current 链接；加 --purge-data 会删除 data/、config/、versions/。完全卸掉还需手动删除二进制：rm -f /usr/local/bin/bb /usr/local/bin/bb-person",
 		RunE:  runUninstall,
 	}
 	cmd.Flags().Bool("purge-data", false, "同时删除 data、config、versions 目录")

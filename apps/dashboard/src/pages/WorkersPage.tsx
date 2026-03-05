@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getWorkers, getRunners, type Worker, type Runner } from "@/api";
+import { getWorkers, getPersons, type Worker, type Person } from "@/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -10,8 +10,8 @@ const DEPTS = [
 
 function workerStatusBadge(w: Worker) {
   if (w.current_job_id) return { text: "忙碌", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400" };
-  if (w.runner_last_heartbeat) {
-    const t = new Date(w.runner_last_heartbeat).getTime();
+  if (w.person_last_heartbeat) {
+    const t = new Date(w.person_last_heartbeat).getTime();
     const age = (Date.now() - t) / 1000;
     if (age < 120) return { text: "在线", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" };
   }
@@ -20,7 +20,7 @@ function workerStatusBadge(w: Worker) {
 
 export function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [runners, setRunners] = useState<Runner[]>([]);
+  const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [deptFilter, setDeptFilter] = useState<string>("");
 
@@ -28,11 +28,11 @@ export function WorkersPage() {
     setLoading(true);
     Promise.all([
       getWorkers(deptFilter ? { dept: deptFilter } : undefined),
-      getRunners(),
+      getPersons(),
     ])
       .then(([w, r]) => {
         setWorkers(w);
-        setRunners(r);
+        setPersons(r);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -76,7 +76,7 @@ export function WorkersPage() {
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            共 {workers.length} 个 Worker，{runners.length} 个 Runner
+            共 {workers.length} 个 Worker，{persons.length} 个 Person（执行器）
           </p>
           {byDept.map(({ id, label, list }) => (
             <Card key={id}>
@@ -92,7 +92,7 @@ export function WorkersPage() {
                       <thead>
                         <tr className="border-b border-border">
                           <th className="py-3 text-left font-medium text-foreground">Worker / Agent</th>
-                          <th className="py-3 text-left font-medium text-foreground">Runner</th>
+                          <th className="py-3 text-left font-medium text-foreground">Person（执行器）</th>
                           <th className="py-3 text-left font-medium text-foreground">状态</th>
                           <th className="py-3 text-left font-medium text-foreground">当前 Job</th>
                         </tr>
@@ -106,7 +106,7 @@ export function WorkersPage() {
                                 <span className="font-medium text-foreground">{w.agent_name ?? w.agent_id}</span>
                                 <span className="ml-1 text-xs text-muted-foreground">({w.id})</span>
                               </td>
-                              <td className="py-3 text-muted-foreground">{w.runner_name ?? w.runner_id}</td>
+                              <td className="py-3 text-muted-foreground">{w.person_name ?? w.person_id}</td>
                               <td className="py-3">
                                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
                                   {badge.text}

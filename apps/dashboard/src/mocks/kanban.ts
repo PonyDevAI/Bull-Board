@@ -71,13 +71,13 @@ const defaultCards: KanbanCard[] = [
   },
   {
     id: "c4",
-    title: "Runner 健康检查",
+    title: "执行器健康检查",
     description: "心跳与离线告警",
     status: "dev",
     priority: "high",
     assignee: "Bob",
     dueDate: "2025-03-10",
-    tags: ["runner"],
+    tags: ["person"],
     createdAt: "2025-02-23T11:00:00Z",
   },
   {

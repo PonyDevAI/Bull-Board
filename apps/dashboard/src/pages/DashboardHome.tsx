@@ -2,7 +2,7 @@ import {
   kpis,
   disks,
   pipeline,
-  runners,
+  persons,
   capacity,
   routing,
   quality,
@@ -11,7 +11,7 @@ import {
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DiskUsageRings } from "@/components/dashboard/DiskUsageRings";
 import { PipelineOverview } from "@/components/dashboard/PipelineOverview";
-import { RunnerHealthPanel } from "@/components/dashboard/RunnerHealthPanel";
+import { PersonHealthPanel } from "@/components/dashboard/PersonHealthPanel";
 import { CapacitySummary } from "@/components/dashboard/CapacitySummary";
 import { RoleModelRouting } from "@/components/dashboard/RoleModelRouting";
 import { QualityRiskPanel } from "@/components/dashboard/QualityRiskPanel";
@@ -41,9 +41,9 @@ export function DashboardHome() {
         reviewThreshold={pipeline.reviewThreshold}
       />
 
-      {/* Row3: Runner Health + Capacity */}
+      {/* Row3: 执行器健康 + Capacity */}
       <div className="grid gap-gap md:grid-cols-2">
-        <RunnerHealthPanel runners={runners} />
+        <PersonHealthPanel persons={persons} />
         <CapacitySummary
           total={capacity.total}
           used={capacity.used}

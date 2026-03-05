@@ -13,9 +13,9 @@ import (
 
 const defaultLeaseSeconds = 600
 
-// GET /api/runner/pull?runner_id=...&limit=... 拉取属于该 runner 的 workers 的 queued jobs，原子写租约
-func (s *Server) runnerPull(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || !strings.HasPrefix(r.URL.Path, "/api/runner/pull") {
+// GET /api/person/pull?person_id=...&limit=... 拉取属于该 person 的 workers 的 queued jobs，原子写租约
+func (s *Server) personPull(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet || !strings.HasPrefix(r.URL.Path, "/api/person/pull") {
 		http.NotFound(w, r)
 		return
 	}
@@ -24,9 +24,9 @@ func (s *Server) runnerPull(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"jobs": []any{}})
 		return
 	}
-	runnerID := r.URL.Query().Get("runner_id")
-	if runnerID == "" {
-		writeJSONError(w, "runner_id required", http.StatusBadRequest)
+	personID := r.URL.Query().Get("person_id")
+	if personID == "" {
+		writeJSONError(w, "person_id required", http.StatusBadRequest)
 		return
 	}
 	limit := 1
@@ -38,15 +38,15 @@ func (s *Server) runnerPull(w http.ResponseWriter, r *http.Request) {
 	// 先回收超时未续租的 running jobs 为 queued
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, _ = s.db.Exec(`UPDATE jobs SET status='queued', locked_until=NULL WHERE status='running' AND (locked_until IS NULL OR locked_until < ?)`, now)
-	// 查询可拉取的 jobs：assigned_worker_id 属于该 runner 的 workers，且 queued 且无有效租约
+	// 查询可拉取的 jobs：assigned_worker_id 属于该 person 的 workers，且 queued 且无有效租约
 	rows, err := s.db.Query(`
 		SELECT j.id, j.run_id, j.task_id, j.workspace_id, j.mode, j.payload_json, j.assigned_worker_id
 		FROM jobs j
-		INNER JOIN workers w ON j.assigned_worker_id = w.id AND w.runner_id = ?
+		INNER JOIN workers w ON j.assigned_worker_id = w.id AND w.person_id = ?
 		WHERE j.status = 'queued' AND (j.locked_until IS NULL OR j.locked_until < ?)
 		ORDER BY j.priority DESC, j.available_at ASC
 		LIMIT ?
-	`, runnerID, now, limit)
+	`, personID, now, limit)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return

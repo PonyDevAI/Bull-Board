@@ -1,4 +1,4 @@
-# PR-08: tag v*.*.* 触发，全 Go 构建 all/runner (linux amd64/arm64)，上传 release + SHA256SUMS
+# PR-08: tag v*.*.* 触发，全 Go 构建 all/person (linux amd64/arm64)，上传 release + SHA256SUMS
 
 name: Release
 
@@ -42,50 +42,50 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Build bb and bb-runner linux amd64
+      - name: Build bb and bb-person linux amd64
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bb-amd64 ./cmd/bb
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bb-runner-amd64 ./cmd/bb-runner
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bb-person-amd64 ./cmd/bb-person
 
-      - name: Build bb and bb-runner linux arm64
+      - name: Build bb and bb-person linux arm64
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bb-arm64 ./cmd/bb
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bb-runner-arm64 ./cmd/bb-runner
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bb-person-arm64 ./cmd/bb-person
 
       - name: Pack bullboard-all-linux-amd64
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           mkdir -p release/all-amd64/dashboard
           cp bb-amd64 release/all-amd64/bb
-          cp bb-runner-amd64 release/all-amd64/bb-runner
+          cp bb-person-amd64 release/all-amd64/bb-person
           cp -r apps/dashboard/dist release/all-amd64/dashboard/
-          chmod +x release/all-amd64/bb release/all-amd64/bb-runner
-          tar -czvf "release/bullboard-all-linux-amd64-${VERSION}.tar.gz" -C release/all-amd64 bb bb-runner dashboard
+          chmod +x release/all-amd64/bb release/all-amd64/bb-person
+          tar -czvf "release/bullboard-all-linux-amd64-${VERSION}.tar.gz" -C release/all-amd64 bb bb-person dashboard
 
       - name: Pack bullboard-all-linux-arm64
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           mkdir -p release/all-arm64/dashboard
           cp bb-arm64 release/all-arm64/bb
-          cp bb-runner-arm64 release/all-arm64/bb-runner
+          cp bb-person-arm64 release/all-arm64/bb-person
           cp -r apps/dashboard/dist release/all-arm64/dashboard/
-          chmod +x release/all-arm64/bb release/all-arm64/bb-runner
-          tar -czvf "release/bullboard-all-linux-arm64-${VERSION}.tar.gz" -C release/all-arm64 bb bb-runner dashboard
+          chmod +x release/all-arm64/bb release/all-arm64/bb-person
+          tar -czvf "release/bullboard-all-linux-arm64-${VERSION}.tar.gz" -C release/all-arm64 bb bb-person dashboard
 
-      - name: Pack runner-only tarballs
+      - name: Pack person-only tarballs
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          mkdir -p release/runner-amd64 release/runner-arm64
-          cp bb-runner-amd64 release/runner-amd64/bb-runner
-          cp bb-runner-arm64 release/runner-arm64/bb-runner
-          chmod +x release/runner-amd64/bb-runner release/runner-arm64/bb-runner
-          tar -czvf "release/bullboard-runner-linux-amd64-${VERSION}.tar.gz" -C release/runner-amd64 bb-runner
-          tar -czvf "release/bullboard-runner-linux-arm64-${VERSION}.tar.gz" -C release/runner-arm64 bb-runner
+          mkdir -p release/person-amd64 release/person-arm64
+          cp bb-person-amd64 release/person-amd64/bb-person
+          cp bb-person-arm64 release/person-arm64/bb-person
+          chmod +x release/person-amd64/bb-person release/person-arm64/bb-person
+          tar -czvf "release/bullboard-person-linux-amd64-${VERSION}.tar.gz" -C release/person-amd64 bb-person
+          tar -czvf "release/bullboard-person-linux-arm64-${VERSION}.tar.gz" -C release/person-arm64 bb-person
 
       - name: Generate SHA256SUMS
         run: |
           cd release
-          sha256sum bullboard-all-linux-amd64-*.tar.gz bullboard-all-linux-arm64-*.tar.gz bullboard-runner-linux-amd64-*.tar.gz bullboard-runner-linux-arm64-*.tar.gz > SHA256SUMS
+          sha256sum bullboard-all-linux-amd64-*.tar.gz bullboard-all-linux-arm64-*.tar.gz bullboard-person-linux-amd64-*.tar.gz bullboard-person-linux-arm64-*.tar.gz > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create Release & Upload assets
@@ -94,8 +94,8 @@ jobs:
           files: |
             release/bullboard-all-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
             release/bullboard-all-linux-arm64-${{ steps.version.outputs.version }}.tar.gz
-            release/bullboard-runner-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
-            release/bullboard-runner-linux-arm64-${{ steps.version.outputs.version }}.tar.gz
+            release/bullboard-person-linux-amd64-${{ steps.version.outputs.version }}.tar.gz
+            release/bullboard-person-linux-arm64-${{ steps.version.outputs.version }}.tar.gz
             release/SHA256SUMS
           generate_release_notes: true
         env:
@@ -110,7 +110,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        image: [console, dashboard, runner]
+        image: [console, dashboard, person]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

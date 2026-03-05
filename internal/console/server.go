@@ -88,59 +88,13 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) runnerHeartbeat(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost || r.URL.Path != "/api/runner/heartbeat" {
-		http.NotFound(w, r)
-		return
-	}
-	var body struct{ RunnerID string `json:"runner_id"` }
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.RunnerID == "" {
-		http.Error(w, `{"error":"runner_id required"}`, http.StatusBadRequest)
-		return
-	}
-	if s.db == nil {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
-		return
-	}
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.Exec(`INSERT INTO runners (id, last_heartbeat) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET last_heartbeat = excluded.last_heartbeat`, body.RunnerID, now)
-	if err != nil {
-		slog.Warn("runner heartbeat", "runner_id", body.RunnerID, "err", err)
-		http.Error(w, `{"error":"db"}`, http.StatusInternalServerError)
-		return
-	}
-	slog.Info("runner heartbeat", "runner_id", body.RunnerID)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
-}
-
-func (s *Server) runnerPoll(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/api/runner/poll" {
-		http.NotFound(w, r)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"jobs": []any{}})
-}
-
-func (s *Server) runnerReport(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost || r.URL.Path != "/api/runner/report" {
-		http.NotFound(w, r)
-		return
-	}
-	var body map[string]any
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"ok": "true"})
-}
 
 func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if path == "" {
 		path = "/"
 	}
-	// API 子路径在 apiRouter 中已处理，这里只处理 workspaces/tasks/runner 和静态
+	// API 子路径在 apiRouter 中已处理，这里只处理 workspaces/tasks/person 和静态
 	if strings.HasPrefix(path, "/api/workspaces") {
 		s.apiWorkspaces(w, r)
 		return
@@ -149,8 +103,8 @@ func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 		s.apiTasks(w, r)
 		return
 	}
-	if strings.HasPrefix(path, "/api/runner/") {
-		s.runnerRoutes(w, r)
+	if strings.HasPrefix(path, "/api/person/") {
+		s.personRoutes(w, r)
 		return
 	}
 	if strings.HasPrefix(path, "/api") {
@@ -176,18 +130,12 @@ func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-// runnerRoutes 分发 /api/runner/*
-func (s *Server) runnerRoutes(w http.ResponseWriter, r *http.Request) {
+// personRoutes 分发 /api/person/*
+func (s *Server) personRoutes(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	switch {
-	case path == "/api/runner/heartbeat" && r.Method == http.MethodPost:
-		s.runnerHeartbeat(w, r)
-	case path == "/api/runner/poll":
-		s.runnerPoll(w, r)
-	case strings.HasPrefix(path, "/api/runner/pull"):
-		s.runnerPull(w, r)
-	case path == "/api/runner/report" && r.Method == http.MethodPost:
-		s.runnerReport(w, r)
+	case strings.HasPrefix(path, "/api/person/pull"):
+		s.personPull(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -209,13 +157,13 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.authLogout(w, r)
 		return
 	}
-	// Runner 注册/心跳（无需 session，可用 API key）
-	if path == "/api/runners/register" && r.Method == http.MethodPost {
-		s.apiRunnersRegister(w, r)
+	// Person 注册/心跳（无需 session，可用 API key）
+	if path == "/api/persons/register" && r.Method == http.MethodPost {
+		s.apiPersonsRegister(w, r)
 		return
 	}
-	if path == "/api/runners/heartbeat" && r.Method == http.MethodPost {
-		s.apiRunnersHeartbeat(w, r)
+	if path == "/api/persons/heartbeat" && r.Method == http.MethodPost {
+		s.apiPersonsHeartbeat(w, r)
 		return
 	}
 	// SSE 仅 session
@@ -292,7 +240,7 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.systemUpgradePlan(w, r)
 		return
 	}
-	// /api/jobs/:id/report（Runner 上报，需 API key 或 session）
+	// /api/jobs/:id/report（Person 上报，需 API key 或 session）
 	if strings.HasPrefix(path, "/api/jobs/") && strings.HasSuffix(path, "/report") && r.Method == http.MethodPost {
 		if !s.authRequired(w, r) {
 			return
@@ -300,19 +248,19 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.jobReport(w, r)
 		return
 	}
-	// /api/runners（GET）、/api/workers 需鉴权
-	if strings.HasPrefix(path, "/api/runners") || strings.HasPrefix(path, "/api/workers") {
+	// /api/persons（GET）、/api/workers 需鉴权
+	if strings.HasPrefix(path, "/api/persons") || strings.HasPrefix(path, "/api/workers") {
 		if !s.authRequired(w, r) {
 			return
 		}
-		if strings.HasPrefix(path, "/api/runners") {
-			s.apiRunnersRoutes(w, r)
+		if strings.HasPrefix(path, "/api/persons") {
+			s.apiPersonsRoutes(w, r)
 			return
 		}
 		s.apiWorkersRoutes(w, r)
 		return
 	}
-	// workspaces, tasks, runner 等需鉴权后交给 staticOrSPA 内部分发
+	// workspaces, tasks, person 等需鉴权后交给 staticOrSPA 内部分发
 	if strings.HasPrefix(path, "/api/") {
 		if !s.authRequired(w, r) {
 			return

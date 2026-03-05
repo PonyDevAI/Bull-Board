@@ -36,10 +36,10 @@ export const pipeline = {
   reviewThreshold: 3,
 };
 
-export const runners = [
-  { name: "runner-1", status: "online" as const, used: 2, total: 4, lastHeartbeat: "2s ago", lastError: "" },
-  { name: "runner-2", status: "online" as const, used: 1, total: 4, lastHeartbeat: "5s ago", lastError: "" },
-  { name: "runner-3", status: "offline" as const, used: 0, total: 4, lastHeartbeat: "2m ago", lastError: "connection timeout" },
+export const persons = [
+  { name: "person-1", status: "online" as const, used: 2, total: 4, lastHeartbeat: "2s ago", lastError: "" },
+  { name: "person-2", status: "online" as const, used: 1, total: 4, lastHeartbeat: "5s ago", lastError: "" },
+  { name: "person-3", status: "offline" as const, used: 0, total: 4, lastHeartbeat: "2m ago", lastError: "connection timeout" },
 ];
 
 export const capacity = {
@@ -65,7 +65,7 @@ export const quality = {
   topReasons: [
     { reason: "model timeout", count: 2 },
     { reason: "syntax error", count: 1 },
-    { reason: "runner crash", count: 1 },
+    { reason: "person crash", count: 1 },
   ],
   blockedTasks: [
     { id: "T-101", reason: "卡在 Review >2h", severity: "high" as const },
@@ -77,12 +77,12 @@ export const quality = {
 export const activity = [
   { time: "10:32:01", type: "task created", desc: "T-125", ref: "taskId=T-125" },
   { time: "10:31:58", type: "status changed", desc: "T-124 → Done", ref: "taskId=T-124" },
-  { time: "10:31:45", type: "runner online", desc: "runner-2", ref: "runnerId=runner-2" },
+  { time: "10:31:45", type: "person online", desc: "person-2", ref: "personId=person-2" },
   { time: "10:30:12", type: "status changed", desc: "T-123 → In Progress", ref: "taskId=T-123" },
   { time: "10:28:00", type: "role→model config changed", desc: "Implementer primary", ref: "role=Implementer" },
-  { time: "10:25:33", type: "runner offline", desc: "runner-3", ref: "runnerId=runner-3" },
+  { time: "10:25:33", type: "person offline", desc: "person-3", ref: "personId=person-3" },
   { time: "10:24:11", type: "task created", desc: "T-124", ref: "taskId=T-124" },
   { time: "10:22:00", type: "tls changed", desc: "TLS disabled", ref: "" },
   { time: "10:20:05", type: "status changed", desc: "T-122 → Review", ref: "taskId=T-122" },
-  { time: "10:18:00", type: "runner online", desc: "runner-1", ref: "runnerId=runner-1" },
+  { time: "10:18:00", type: "person online", desc: "person-1", ref: "personId=person-1" },
 ];

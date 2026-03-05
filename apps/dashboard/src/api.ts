@@ -320,26 +320,27 @@ export async function actionContinueFix(taskId: string) {
   return handleResponse(r);
 }
 
-// --- Workers / Runners (PR5) ---
+// --- Workers / Persons (PR5) ---
 export type Worker = {
   id: string;
   company_id: string;
   dept_id: string;
   agent_id: string;
-  runner_id: string;
+  person_id: string;
   status: string;
   max_concurrency: number;
   current_job_id?: string;
   last_seen_at?: string;
   created_at: string;
   agent_name?: string;
-  runner_name?: string;
-  runner_last_heartbeat?: string;
+  person_name?: string;
+  person_last_heartbeat?: string;
 };
 
-export type Runner = {
+export type Person = {
   id: string;
   company_id: string;
+  type?: string;
   name: string;
   host: string;
   capabilities_json: string;
@@ -356,7 +357,7 @@ export async function getWorkers(params?: { dept?: string; status?: string }): P
   return handleResponse(r);
 }
 
-export async function getRunners(): Promise<Runner[]> {
-  const r = await fetch(API + "/runners", defaultFetchOptions);
+export async function getPersons(): Promise<Person[]> {
+  const r = await fetch(API + "/persons", defaultFetchOptions);
   return handleResponse(r);
 }

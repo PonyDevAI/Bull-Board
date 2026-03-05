@@ -37,7 +37,7 @@ func initSchema(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, key_hash TEXT NOT NULL, key_prefix TEXT NOT NULL, created_at TEXT NOT NULL, last_used_at TEXT, revoked_at TEXT);
-		CREATE TABLE IF NOT EXISTS runners (id TEXT PRIMARY KEY, last_heartbeat TEXT);
+		CREATE TABLE IF NOT EXISTS persons (id TEXT PRIMARY KEY, company_id TEXT, type TEXT NOT NULL DEFAULT 'self', name TEXT, host TEXT, capabilities_json TEXT, max_concurrency INTEGER DEFAULT 1, version TEXT, last_seen_at TEXT, status TEXT DEFAULT 'offline', last_heartbeat TEXT, endpoint_url TEXT, config_json TEXT);
 		CREATE TABLE IF NOT EXISTS workspaces (
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
@@ -145,33 +145,51 @@ func initSchemaCompanyWorkers(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS companies (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS depts (id TEXT PRIMARY KEY, company_id TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('plan','exec')), name TEXT NOT NULL, created_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, company_id TEXT NOT NULL, dept_id TEXT, name TEXT NOT NULL, roles_json TEXT, model_config_json TEXT, prompt_profile TEXT, tool_profile TEXT, is_enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-		CREATE TABLE IF NOT EXISTS workers (id TEXT PRIMARY KEY, company_id TEXT NOT NULL, dept_id TEXT, agent_id TEXT NOT NULL UNIQUE, runner_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'offline', max_concurrency INTEGER NOT NULL DEFAULT 1, current_job_id TEXT, last_seen_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+		CREATE TABLE IF NOT EXISTS workers (id TEXT PRIMARY KEY, company_id TEXT NOT NULL, dept_id TEXT, agent_id TEXT NOT NULL UNIQUE, person_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'offline', max_concurrency INTEGER NOT NULL DEFAULT 1, current_job_id TEXT, last_seen_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 	`)
 	if err != nil {
 		return err
 	}
-	// runners 表已有 (id, last_heartbeat)；补列
+	// persons 表补列（兼容旧 persons 或迁移后）
 	for _, q := range []string{
-		"ALTER TABLE runners ADD COLUMN company_id TEXT",
-		"ALTER TABLE runners ADD COLUMN name TEXT",
-		"ALTER TABLE runners ADD COLUMN host TEXT",
-		"ALTER TABLE runners ADD COLUMN capabilities_json TEXT",
-		"ALTER TABLE runners ADD COLUMN max_concurrency INTEGER DEFAULT 1",
-		"ALTER TABLE runners ADD COLUMN version TEXT",
-		"ALTER TABLE runners ADD COLUMN last_seen_at TEXT",
-		"ALTER TABLE runners ADD COLUMN status TEXT DEFAULT 'offline'",
+		"ALTER TABLE persons ADD COLUMN company_id TEXT",
+		"ALTER TABLE persons ADD COLUMN type TEXT",
+		"ALTER TABLE persons ADD COLUMN name TEXT",
+		"ALTER TABLE persons ADD COLUMN host TEXT",
+		"ALTER TABLE persons ADD COLUMN capabilities_json TEXT",
+		"ALTER TABLE persons ADD COLUMN max_concurrency INTEGER",
+		"ALTER TABLE persons ADD COLUMN version TEXT",
+		"ALTER TABLE persons ADD COLUMN last_seen_at TEXT",
+		"ALTER TABLE persons ADD COLUMN status TEXT",
+		"ALTER TABLE persons ADD COLUMN endpoint_url TEXT",
+		"ALTER TABLE persons ADD COLUMN config_json TEXT",
 	} {
 		_, _ = db.Exec(q)
 	}
+	// 迁移：旧 DB 有 runners 表则迁到 persons，workers.runner_id -> person_id
+	migrateRunnersToPersons(db)
 	// workspaces 补 company_id
 	_, _ = db.Exec("ALTER TABLE workspaces ADD COLUMN company_id TEXT")
 	// jobs 补 assigned_worker_id（PR3 强指派）
 	_, _ = db.Exec("ALTER TABLE jobs ADD COLUMN assigned_worker_id TEXT")
 	// 默认公司
 	_, _ = db.Exec(`INSERT OR IGNORE INTO companies (id, name, created_at) VALUES ('default', 'Default', datetime('now'))`)
-	// 默认 agent + runner + worker（用于未指定 worker 时的 enqueue 兼容）
+	// 默认 agent + person + worker（用于未指定 worker 时的 enqueue 兼容）
 	_, _ = db.Exec(`INSERT OR IGNORE INTO agents (id, company_id, name, is_enabled, created_at, updated_at) VALUES ('default', 'default', 'Default Agent', 1, datetime('now'), datetime('now'))`)
-	_, _ = db.Exec(`INSERT OR IGNORE INTO runners (id, company_id, status, last_heartbeat) VALUES ('default', 'default', 'offline', datetime('now'))`)
-	_, _ = db.Exec(`INSERT OR IGNORE INTO workers (id, company_id, agent_id, runner_id, status, max_concurrency, created_at, updated_at) VALUES ('default', 'default', 'default', 'default', 'offline', 1, datetime('now'), datetime('now'))`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO persons (id, company_id, type, status, last_heartbeat) VALUES ('default', 'default', 'self', 'offline', datetime('now'))`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO workers (id, company_id, agent_id, person_id, status, max_concurrency, created_at, updated_at) VALUES ('default', 'default', 'default', 'default', 'offline', 1, datetime('now'), datetime('now'))`)
 	return nil
+}
+
+// migrateRunnersToPersons 将旧 runners 表数据迁入 persons，workers.runner_id 迁入 person_id
+func migrateRunnersToPersons(db *sql.DB) {
+	var exists int
+	err := db.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name='runners'").Scan(&exists)
+	if err != nil || exists == 0 {
+		return
+	}
+	_, _ = db.Exec(`INSERT OR REPLACE INTO persons (id, company_id, type, name, host, capabilities_json, max_concurrency, version, last_seen_at, status, last_heartbeat) SELECT id, COALESCE(company_id,'default'), 'self', COALESCE(name, id), host, capabilities_json, COALESCE(max_concurrency,1), version, last_seen_at, COALESCE(status,'offline'), last_heartbeat FROM runners`)
+	_, _ = db.Exec(`ALTER TABLE workers ADD COLUMN person_id TEXT`)
+	_, _ = db.Exec(`UPDATE workers SET person_id = runner_id WHERE person_id IS NULL AND runner_id IS NOT NULL`)
+	_, _ = db.Exec(`DROP TABLE runners`)
 }

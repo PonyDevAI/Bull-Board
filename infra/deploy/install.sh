@@ -2,7 +2,7 @@
 # Bull Board 安装/升级/卸载脚本（bb 目录规范）
 # 用法: ./install.sh <install|upgrade|uninstall|status|version> [options]
 # 目录: PREFIX/versions/<v>/, PREFIX/current -> versions/<v>, PREFIX/config/, PREFIX/data/
-# 服务: bb.service, bb-runner.service，端口 8888
+# 服务: bb.service, bb-person.service，端口 8888
 
 set -e
 
@@ -26,7 +26,7 @@ usage() {
   echo "用法: $0 <install|upgrade|uninstall|status|version> [options]"
   echo "选项:"
   echo "  --mode local|docker    部署模式（默认 local）"
-  echo "  --component console|runner|all  组件（默认 all）"
+  echo "  --component console|person|all  组件（默认 all）"
   echo "  --version latest|vX.Y.Z  版本（默认 latest）"
   echo "  --prefix <dir>         安装前缀（默认 /opt/bull-board）"
   echo "  --port <port>          端口（默认 8888）"
@@ -79,26 +79,26 @@ fetch_templates() {
   local base="https://raw.githubusercontent.com/$GITHUB_REPO/$branch/infra/deploy/templates"
   mkdir -p "$tmpdir/systemd"
   curl -fsSL "$base/systemd/bb.service.tpl" -o "$tmpdir/systemd/bb.service.tpl"
-  curl -fsSL "$base/systemd/bb-runner.service.tpl" -o "$tmpdir/systemd/bb-runner.service.tpl"
+  curl -fsSL "$base/systemd/bb-person.service.tpl" -o "$tmpdir/systemd/bb-person.service.tpl"
   echo "$tmpdir"
 }
 
-# 从仓库构建目录安装到 PREFIX/versions/<VERSION>/（全 Go：bb + bb-runner + dashboard dist）
+# 从仓库构建目录安装到 PREFIX/versions/<VERSION>/（全 Go：bb + bb-person + dashboard dist）
 install_from_repo() {
   local ver="${VERSION:-dev}"
   local dest_base="$PREFIX/versions/$ver"
   mkdir -p "$dest_base/dashboard"
 
-  # Go 二进制 bb、bb-runner（需在仓库根已 go build）
-  if [ -f "$REPO_ROOT/bb" ] && [ -f "$REPO_ROOT/bb-runner" ]; then
-    cp "$REPO_ROOT/bb" "$REPO_ROOT/bb-runner" "$dest_base/"
-    chmod +x "$dest_base/bb" "$dest_base/bb-runner"
+  # Go 二进制 bb、bb-person（需在仓库根已 go build）
+  if [ -f "$REPO_ROOT/bb" ] && [ -f "$REPO_ROOT/bb-person" ]; then
+    cp "$REPO_ROOT/bb" "$REPO_ROOT/bb-person" "$dest_base/"
+    chmod +x "$dest_base/bb" "$dest_base/bb-person"
   elif command -v go >/dev/null 2>&1; then
-    (cd "$REPO_ROOT" && go build -o bb ./cmd/bb && go build -o bb-runner ./cmd/bb-runner) || { echo "go build 失败"; return 1; }
-    cp "$REPO_ROOT/bb" "$REPO_ROOT/bb-runner" "$dest_base/"
-    chmod +x "$dest_base/bb" "$dest_base/bb-runner"
+    (cd "$REPO_ROOT" && go build -o bb ./cmd/bb && go build -o bb-person ./cmd/bb-person) || { echo "go build 失败"; return 1; }
+    cp "$REPO_ROOT/bb" "$REPO_ROOT/bb-person" "$dest_base/"
+    chmod +x "$dest_base/bb" "$dest_base/bb-person"
   else
-    echo "请先构建 bb/bb-runner 或安装 Go 后重试"
+    echo "请先构建 bb/bb-person 或安装 Go 后重试"
     return 1
   fi
   # dashboard 静态（仅构建产物，无需 Node 运行时）
@@ -131,47 +131,48 @@ install_local() {
   rm -f "$PREFIX/current"
   ln -sf "$PREFIX/versions/$VERSION" "$PREFIX/current"
 
-  local want_console=false want_runner=false
+  local want_console=false want_person=false
   [ "$COMPONENT" = "console" ] || [ "$COMPONENT" = "all" ] && want_console=true
-  [ "$COMPONENT" = "runner" ] || [ "$COMPONENT" = "all" ] && want_runner=true
+  [ "$COMPONENT" = "person" ] || [ "$COMPONENT" = "all" ] && want_person=true
 
-  # 安装 bb、bb-runner 到 /usr/local/bin（全 Go 二进制在 current/ 下）
+  # 安装 bb、bb-person 到 /usr/local/bin（全 Go 二进制在 current/ 下）
   if [ "$(id -u)" = 0 ]; then
     [ -f "$PREFIX/current/bb" ] && cp "$PREFIX/current/bb" /usr/local/bin/bb && chmod +x /usr/local/bin/bb
-    [ -f "$PREFIX/current/bb-runner" ] && cp "$PREFIX/current/bb-runner" /usr/local/bin/bb-runner && chmod +x /usr/local/bin/bb-runner
+    [ -f "$PREFIX/current/bb-person" ] && cp "$PREFIX/current/bb-person" /usr/local/bin/bb-person && chmod +x /usr/local/bin/bb-person
   fi
   mkdir -p "$PREFIX/bin"
   [ -f "$SCRIPT_DIR/install.sh" ] && cp "$SCRIPT_DIR/install.sh" "$PREFIX/bin/" 2>/dev/null || true
 
   if [ "$(id -u)" = 0 ]; then
     $want_console && sed "s|{{PREFIX}}|$PREFIX|g" "$TEMPLATES/systemd/bb.service.tpl" > /etc/systemd/system/bb.service
-    $want_runner && sed "s|{{PREFIX}}|$PREFIX|g" "$TEMPLATES/systemd/bb-runner.service.tpl" > /etc/systemd/system/bb-runner.service
-    ($want_console || $want_runner) && systemctl daemon-reload
+    $want_person && sed "s|{{PREFIX}}|$PREFIX|g" "$TEMPLATES/systemd/bb-person.service.tpl" > /etc/systemd/system/bb-person.service
+    ($want_console || $want_person) && systemctl daemon-reload
     $want_console && systemctl enable --now bb
-    $want_runner && systemctl enable --now bb-runner
-    # 若存在初始凭证，则打印并将 runner_api_key 写入 bb.env，随后重启 runner
+    $want_person && systemctl enable --now bb-person
+    # 若存在初始凭证，则打印并将 person_api_key 写入 bb.env，随后重启 person
     local cred="$PREFIX/config/initial_credentials.txt"
     if [ -f "$cred" ]; then
       echo "=== Bull Board 初始凭证（请妥善保存） ==="
       cat "$cred"
       echo "======================================="
-      local runner_key
-      runner_key="$(grep -E '^runner_api_key=' "$cred" | head -1 | sed 's/^runner_api_key=//')"
-      if [ -n "$runner_key" ]; then
+      local person_key
+      person_key="$(grep -E '^person_api_key=' "$cred" | head -1 | sed 's/^person_api_key=//')"
+      [ -z "$person_key" ] && person_key="$(grep -E '^runner_api_key=' "$cred" | head -1 | sed 's/^runner_api_key=//')"
+      if [ -n "$person_key" ]; then
         mkdir -p "$PREFIX/config"
         touch "$PREFIX/config/bb.env"
         chmod 640 "$PREFIX/config/bb.env" 2>/dev/null || chmod 600 "$PREFIX/config/bb.env" 2>/dev/null || true
-        if ! grep -q '^RUNNER_API_KEY=' "$PREFIX/config/bb.env" 2>/dev/null; then
-          echo "RUNNER_API_KEY=$runner_key" >> "$PREFIX/config/bb.env"
+        if ! grep -q '^PERSON_API_KEY=' "$PREFIX/config/bb.env" 2>/dev/null; then
+          echo "PERSON_API_KEY=$person_key" >> "$PREFIX/config/bb.env"
         fi
-        systemctl restart bb-runner || true
+        systemctl restart bb-person || true
       fi
     fi
   else
     echo "未以 root 运行，跳过 systemd。请手动："
     echo "  sudo sed \"s|{{PREFIX}}|$PREFIX|g\" $TEMPLATES/systemd/bb.service.tpl | sudo tee /etc/systemd/system/bb.service"
-    echo "  sudo sed \"s|{{PREFIX}}|$PREFIX|g\" $TEMPLATES/systemd/bb-runner.service.tpl | sudo tee /etc/systemd/system/bb-runner.service"
-    echo "  sudo systemctl daemon-reload && sudo systemctl enable --now bb bb-runner"
+    echo "  sudo sed \"s|{{PREFIX}}|$PREFIX|g\" $TEMPLATES/systemd/bb-person.service.tpl | sudo tee /etc/systemd/system/bb-person.service"
+    echo "  sudo systemctl daemon-reload && sudo systemctl enable --now bb bb-person"
   fi
 }
 
@@ -188,9 +189,9 @@ EOF
 }
 
 uninstall_local() {
-  [ "$(id -u)" = 0 ] && systemctl stop bb bb-runner 2>/dev/null || true
-  [ "$(id -u)" = 0 ] && systemctl disable bb bb-runner 2>/dev/null || true
-  [ "$(id -u)" = 0 ] && rm -f /etc/systemd/system/bb.service /etc/systemd/system/bb-runner.service && systemctl daemon-reload || true
+  [ "$(id -u)" = 0 ] && systemctl stop bb bb-person 2>/dev/null || true
+  [ "$(id -u)" = 0 ] && systemctl disable bb bb-person 2>/dev/null || true
+  [ "$(id -u)" = 0 ] && rm -f /etc/systemd/system/bb.service /etc/systemd/system/bb-person.service && systemctl daemon-reload || true
   rm -f "$PREFIX/current"
   if [ "$PURGE_DATA" = "true" ]; then
     rm -rf "$PREFIX/data" "$PREFIX/versions" "$PREFIX/config"
@@ -215,7 +216,7 @@ status_local() {
   fi
   echo "=== Services ==="
   [ "$(uname -s)" = "Linux" ] && systemctl is-active bb 2>/dev/null && echo "bb: active" || echo "bb: inactive"
-  [ "$(uname -s)" = "Linux" ] && systemctl is-active bb-runner 2>/dev/null && echo "bb-runner: active" || echo "bb-runner: inactive"
+  [ "$(uname -s)" = "Linux" ] && systemctl is-active bb-person 2>/dev/null && echo "bb-person: active" || echo "bb-person: inactive"
   echo "=== Panel ==="
   echo "http://$(hostname -f 2>/dev/null || echo localhost):$PORT"
 }

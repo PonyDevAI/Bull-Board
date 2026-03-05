@@ -10,7 +10,7 @@
 curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/deploy/install.sh | bash
 ```
 
-- **默认**：local 模式、全部组件（bb + bb-runner）、最新版本、前缀 `/opt/bull-board`、端口 **8888**。
+- **默认**：local 模式、全部组件（bb + bb-person）、最新版本、前缀 `/opt/bull-board`、端口 **8888**。
 - 可通过环境变量覆盖：`VERSION`、`MODE`、`COMPONENT`、`PREFIX`、`PORT`。
 - 安装完成后会输出 Panel URL 与 `bb status`；访问 http://your-host:8888 即可使用。
 
@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/dep
 ## Local 模式（默认）
 
 - **bb.service**：看板 + API + SSE，单端口 **8888**（无 nginx）。
-- **bb-runner.service**：执行器，默认连接 `http://127.0.0.1:8888`。
+- **bb-person.service**：执行器（Person），默认连接 `http://127.0.0.1:8888`。
 - 安装脚本会安装 systemd 单元并启动；日常管理用 **bb** 命令（见 [CLI_SPEC.md](CLI_SPEC.md)）。
 
 ### 安装 / 升级 / 卸载
@@ -92,6 +92,6 @@ bb restart console
 
 - 打 tag `v*.*.*` 触发 GitHub Actions，生成 release assets：
   - `bullboard-all-linux-amd64-vX.Y.Z.tar.gz` / `bullboard-all-linux-arm64-vX.Y.Z.tar.gz`
-  - `bullboard-runner-linux-amd64-vX.Y.Z.tar.gz` / `bullboard-runner-linux-arm64-vX.Y.Z.tar.gz`
+  - `bullboard-person-linux-amd64-vX.Y.Z.tar.gz` / `bullboard-person-linux-arm64-vX.Y.Z.tar.gz`（Person 执行器）
   - `SHA256SUMS`
 - 一条命令安装会按系统架构下载对应 all 包并校验 SHA256。

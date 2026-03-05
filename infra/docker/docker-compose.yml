@@ -1,5 +1,5 @@
 # Bull Board - Docker Compose
-# profiles: console（dashboard + console），worker（runner）
+# profiles: console（dashboard + console），worker（person）
 # 使用方式: docker compose --profile console --profile worker up -d
 # 本地构建: 在仓库根执行 docker compose -f infra/docker/docker-compose.yml --profile console build
 # 然后: docker compose -f infra/docker/docker-compose.yml --profile console up -d
@@ -45,18 +45,18 @@ services:
     profiles:
       - console
 
-  runner:
-    image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-runner:${IMAGE_TAG:-latest}
+  person:
+    image: ghcr.io/${GITHUB_REPO_OWNER:-owner}/bullboard-person:${IMAGE_TAG:-latest}
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile.runner
-    container_name: bullboard-runner
+      dockerfile: infra/docker/Dockerfile.person
+    container_name: bullboard-person
     restart: unless-stopped
     environment:
       SQLITE_PATH: /shared/data/bullboard.db
       ARTIFACTS_DIR: /shared/artifacts
       API_BASE_URL: http://console:3000
-      RUNNER_ID: runner-1
+      PERSON_ID: person-1
       MAX_CONCURRENCY: 1
       LEASE_SECONDS: 600
     volumes:

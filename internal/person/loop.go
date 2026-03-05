@@ -1,4 +1,4 @@
-package runner
+package person
 
 import (
 	"bytes"
@@ -20,10 +20,10 @@ func Run(cfg Config) {
 	if err := doRegister(client, cfg); err != nil {
 		slog.Warn("register failed", "err", err)
 	}
-	// 全局 runner 级信号量
-	runnerSem := make(chan struct{}, cfg.MaxConcurrency)
+	// 全局 person 级信号量
+	personSem := make(chan struct{}, cfg.MaxConcurrency)
 	if cfg.MaxConcurrency <= 0 {
-		runnerSem = make(chan struct{}, 1)
+		personSem = make(chan struct{}, 1)
 	}
 	// 每 worker 信号量（worker_id -> chan，默认容量 1）
 	workerSems := &workerSemMap{m: make(map[string]chan struct{})}
@@ -43,8 +43,8 @@ func Run(cfg Config) {
 		for _, job := range jobs {
 			job := job
 			go func() {
-				runnerSem <- struct{}{}
-				defer func() { <-runnerSem }()
+				personSem <- struct{}{}
+				defer func() { <-personSem }()
 				runJob(context.Background(), client, cfg, job, workerSems)
 			}()
 		}
@@ -78,17 +78,18 @@ func (w *workerSemMap) release(workerID string) {
 
 func doRegister(client *http.Client, cfg Config) error {
 	body, _ := json.Marshal(map[string]any{
-		"runner_id":        cfg.RunnerID,
-		"company_id":      "default",
-		"name":            cfg.RunnerID,
-		"host":            hostname(),
+		"person_id":        cfg.PersonID,
+		"company_id":       "default",
+		"name":             cfg.PersonID,
+		"host":             hostname(),
 		"max_concurrency": cfg.MaxConcurrency,
-		"version":         "1.0",
+		"version":          "1.0",
+		"type":             "self",
 	})
-	req, _ := http.NewRequest(http.MethodPost, cfg.APIBaseURL+"/api/runners/register", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, cfg.APIBaseURL+"/api/persons/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	if cfg.RunnerAPIKey != "" {
-		req.Header.Set("X-API-Key", cfg.RunnerAPIKey)
+	if cfg.PersonAPIKey != "" {
+		req.Header.Set("X-API-Key", cfg.PersonAPIKey)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -98,7 +99,7 @@ func doRegister(client *http.Client, cfg Config) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("register status %d", resp.StatusCode)
 	}
-	slog.Info("registered", "runner_id", cfg.RunnerID)
+	slog.Info("registered", "person_id", cfg.PersonID)
 	return nil
 }
 
@@ -111,11 +112,11 @@ func hostname() string {
 }
 
 func doHeartbeat(client *http.Client, cfg Config) {
-	body, _ := json.Marshal(map[string]string{"runner_id": cfg.RunnerID})
-	req, _ := http.NewRequest(http.MethodPost, cfg.APIBaseURL+"/api/runners/heartbeat", bytes.NewReader(body))
+	body, _ := json.Marshal(map[string]string{"person_id": cfg.PersonID})
+	req, _ := http.NewRequest(http.MethodPost, cfg.APIBaseURL+"/api/persons/heartbeat", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	if cfg.RunnerAPIKey != "" {
-		req.Header.Set("X-API-Key", cfg.RunnerAPIKey)
+	if cfg.PersonAPIKey != "" {
+		req.Header.Set("X-API-Key", cfg.PersonAPIKey)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -126,10 +127,10 @@ func doHeartbeat(client *http.Client, cfg Config) {
 }
 
 func doPull(client *http.Client, cfg Config) (jobs []map[string]any) {
-	url := cfg.APIBaseURL + "/api/runner/pull?runner_id=" + cfg.RunnerID + "&limit=2"
+	url := cfg.APIBaseURL + "/api/person/pull?person_id=" + cfg.PersonID + "&limit=2"
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
-	if cfg.RunnerAPIKey != "" {
-		req.Header.Set("X-API-Key", cfg.RunnerAPIKey)
+	if cfg.PersonAPIKey != "" {
+		req.Header.Set("X-API-Key", cfg.PersonAPIKey)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -217,8 +218,8 @@ func doJobReport(client *http.Client, cfg Config, jobID, status, summary, logs s
 	url := cfg.APIBaseURL + "/api/jobs/" + jobID + "/report"
 	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	if cfg.RunnerAPIKey != "" {
-		req.Header.Set("X-API-Key", cfg.RunnerAPIKey)
+	if cfg.PersonAPIKey != "" {
+		req.Header.Set("X-API-Key", cfg.PersonAPIKey)
 	}
 	resp, err := client.Do(req)
 	if err != nil {

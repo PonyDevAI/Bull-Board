@@ -34,7 +34,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	if path, _ := exec.LookPath("systemctl"); path != "" {
 		out, _ := exec.Command("systemctl", "--version").Output()
 		fmt.Println("systemd:", strings.Split(string(out), "\n")[0])
-		for _, svc := range []string{"bb", "bb-runner"} {
+		for _, svc := range []string{"bb", "bb-person"} {
 			out, _ := exec.Command("systemctl", "is-active", svc).Output()
 			st := strings.TrimSpace(string(out))
 			if st == "" {

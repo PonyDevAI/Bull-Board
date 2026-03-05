@@ -11,8 +11,8 @@ data/*.db
 !data/.gitkeep
 apps/console/data/
 /bb
-/bb-runner
+/bb-person
 /bb-amd64
 /bb-arm64
-/bb-runner-amd64
-/bb-runner-arm64
+/bb-person-amd64
+/bb-person-arm64

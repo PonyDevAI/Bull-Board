@@ -10,8 +10,8 @@
 |------|------|
 | `bb server` | 启动 Console 控制台服务（端口 8888；systemd 下由 bb.service 调用） |
 | `bb status` | 服务状态与 Panel 地址 |
-| `bb logs [console\|runner] [-f] [--lines N]` | 查看日志（Linux journalctl） |
-| `bb restart [console\|runner\|all]` | 重启服务 |
+| `bb logs [console\|person] [-f] [--lines N]` | 查看日志（Linux journalctl）；person 为执行器 |
+| `bb restart [console\|person\|all]` | 重启服务 |
 | `bb doctor` | 环境检查 |
 | `bb version` | 显示版本号 |
 | `bb tls enable --self-signed` | 启用 TLS（自签证书） |
@@ -47,6 +47,7 @@ bb logs console -f
 # 重启
 bb restart all
 bb restart console
+bb restart person   # 重启 Person 执行器（bb-person）
 
 # 环境检查
 bb doctor

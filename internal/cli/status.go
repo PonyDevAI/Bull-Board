@@ -32,7 +32,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	// systemd
 	if path, _ := exec.LookPath("systemctl"); path != "" {
 		fmt.Println("Services:")
-		for _, svc := range []string{"bb", "bb-runner"} {
+		for _, svc := range []string{"bb", "bb-person"} {
 			out, _ := exec.Command("systemctl", "is-active", svc).Output()
 			status := strings.TrimSpace(string(out))
 			if status == "" {

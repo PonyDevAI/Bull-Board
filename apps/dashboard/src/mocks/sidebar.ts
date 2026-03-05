@@ -21,7 +21,7 @@ export interface WorkspaceOption {
   slug?: string;
 }
 
-/** 宝塔侧栏菜单：Dashboard / Kanban / Tasks / Runs | Runners / Workspaces / Artifacts | Models / Roles & Routing / Policies | Logs / Audit / Alerts | Settings */
+/** 宝塔侧栏菜单：Dashboard / Kanban / Tasks / Runs | Persons(执行器) / Workspaces / Artifacts | Models / Roles & Routing / Policies | Logs / Audit / Alerts | Settings */
 export const sidebarNavGroups: NavGroup[] = [
   {
     items: [
@@ -33,7 +33,7 @@ export const sidebarNavGroups: NavGroup[] = [
   },
   {
     items: [
-      { to: "/dashboard/runners", label: "Runners", icon: "Cpu", badge: "2", badgeVariant: "success" },
+      { to: "/dashboard/persons", label: "执行器 (Persons)", icon: "Cpu", badge: "2", badgeVariant: "success" },
       { to: "/dashboard/workers", label: "Workers", icon: "Bot" },
       { to: "/dashboard/workspaces", label: "Workspaces", icon: "FolderOpen" },
       { to: "/dashboard/artifacts", label: "Artifacts", icon: "Package" },

@@ -7,7 +7,7 @@
 ## 阶段 0：现状（v0.1）
 
 - **单项目**：一个 Workspace 对应一个代码仓库，任务归属 Workspace。
-- **单 Runner**：Go Runner 从 SQLite jobs 领任务执行，无 Agent/模型概念。
+- **单 Person**：Person 执行器（bb-person，type=self）从 SQLite jobs 领任务执行，无 Agent/模型概念。
 - **固定流程**：Plan → Pending → In Progress → Review → Testing → Done/Failed。
 - **Dashboard**：Workspace 选择、Kanban、Task 详情、SSE 推送。
 
@@ -50,13 +50,13 @@
 **目标**：不同「Agent」负责不同阶段或不同类型任务（例如 Plan Agent、Code Agent、Review Agent），支持多 Agent 协作编排。
 
 1. **抽象**
-   - **Agent**：员工档案（静态配置），绑定 roles、model、prompt、job 类型、超时等。与 Runner 绑定后形成 **Worker**（派单对象）；Runner 是进程，不是 Agent。见 docs/ARCHITECTURE.md。
-   - **方案 A**：一个 Runner 可绑定多个 Agent，形成多个 Worker；jobs 强指派 `assigned_worker_id`。
+   - **Agent**：员工档案（静态配置），绑定 roles、model、prompt、job 类型、超时等。与 **Person** 绑定并通过 Role 形成 **Worker**（派单对象）；Person 是执行器，不是 Agent。见 docs/ARCHITECTURE.md。
+   - **方案 A**：一个 Person 可绑定多个 Role，形成多个 Worker；jobs 强指派 `assigned_worker_id`。
 2. **数据与 API**
-   - 新增 `agents`、`runners`、`workers` 表；jobs 表增加 `assigned_worker_id`（必填）。
-   - Console 创建 job 时指定 assigned_worker_id；API：`GET /api/agents`、`GET /api/workers`、`GET /api/runners`。
-3. **Runner 与编排**
-   - Runner 拉取仅限属于其绑定 workers 的 jobs；执行时 goroutine + 双层并发 + 独立 workdir（见 ARCHITECTURE.md）。
+   - 新增 `agents`、**persons**（原 runners）、`workers` 表；jobs 表增加 `assigned_worker_id`（必填）。
+   - Console 创建 job 时指定 assigned_worker_id；API：`GET /api/agents`、`GET /api/workers`、`GET /api/persons`。
+3. **Person 与编排**
+   - Person 拉取仅限属于其绑定 workers 的 jobs；执行时 goroutine + 双层并发 + 独立 workdir（见 ARCHITECTURE.md）。
 4. **Dashboard**
    - Settings → Agents：Agent 的增删改查、绑定模型与 job 类型。
    - 看板/任务详情：展示「当前阶段 / 当前 Run 由哪个 Agent 执行」；可选按 Agent 筛选任务。
