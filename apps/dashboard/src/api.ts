@@ -28,6 +28,33 @@ export type Workspace = {
   createdAt: string;
 };
 
+export type WorkflowTemplate = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description?: string;
+  config_json: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkflowStep = {
+  id: string;
+  workflow_template_id: string;
+  role_id?: string;
+  name: string;
+  step_type: string;
+  step_order: number;
+  config_json: string;
+  created_at: string;
+};
+
+export type TaskWorkflowState = {
+  workflow_run?: { id: string; status: string };
+  step_runs?: Array<{ id: string; name?: string; step_order?: number; status: string; worker_id?: string }>;
+  current_step?: { id: string; status: string; name?: string; worker_id?: string };
+};
+
 export type Task = {
   id: string;
   workspaceId: string;
@@ -46,6 +73,9 @@ export type TaskDetail = Task & {
   workspace?: Workspace;
   runs?: Run[];
   messages?: Message[];
+  workflowRun?: { id: string; status: string };
+  stepRuns?: Array<{ id: string; name?: string; step_order?: number; status: string; worker_id?: string }>;
+  currentStep?: { id: string; status: string; name?: string; worker_id?: string };
 };
 
 export type Run = {
@@ -240,7 +270,7 @@ export async function getTask(id: string): Promise<TaskDetail> {
   return handleResponse(r);
 }
 
-export async function createTask(body: { workspaceId: string; title: string; description?: string }) {
+export async function createTask(body: { workspaceId: string; title: string; description?: string; workflowTemplateId?: string }) {
   const r = await fetch(API + "/tasks", {
     ...defaultFetchOptions,
     method: "POST",
@@ -387,3 +417,49 @@ export const workforceApi = {
   createWorker: (body: Record<string, any>) => createResource("/workers", body),
   updateWorker: (id: string, body: Record<string, any>) => updateResource("/workers", id, body),
 };
+
+
+export async function getWorkflowTemplates(): Promise<{ items: WorkflowTemplate[] }> {
+  const r = await fetch(API + "/workflow-templates", defaultFetchOptions);
+  return handleResponse(r);
+}
+
+export async function createWorkflowTemplate(body: { workspace_id: string; name: string; description?: string; config_json?: string }) {
+  const r = await fetch(API + "/workflow-templates", {
+    ...defaultFetchOptions,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(r);
+}
+
+export async function updateWorkflowTemplate(id: string, body: Record<string, unknown>) {
+  const r = await fetch(API + "/workflow-templates/" + id, {
+    ...defaultFetchOptions,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(r);
+}
+
+export async function getWorkflowTemplateSteps(templateId: string): Promise<{ items: WorkflowStep[] }> {
+  const r = await fetch(API + "/workflow-templates/" + templateId + "/steps", defaultFetchOptions);
+  return handleResponse(r);
+}
+
+export async function createWorkflowTemplateStep(templateId: string, body: Record<string, unknown>) {
+  const r = await fetch(API + "/workflow-templates/" + templateId + "/steps", {
+    ...defaultFetchOptions,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(r);
+}
+
+export async function getTaskWorkflow(taskId: string): Promise<TaskWorkflowState> {
+  const r = await fetch(API + "/tasks/" + taskId + "/workflow", defaultFetchOptions);
+  return handleResponse(r);
+}

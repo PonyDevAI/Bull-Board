@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/PonyDevAI/Bull-Board/internal/common"
+	"github.com/PonyDevAI/Bull-Board/internal/console/workflows"
 )
 
 // apiWorkspaces 处理 GET/POST /api/workspaces、GET /api/workspaces/:id
@@ -83,8 +84,8 @@ func (s *Server) getWorkspace(w http.ResponseWriter, id string) {
 
 func (s *Server) createWorkspace(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name         string `json:"name"`
-		RepoPath     string `json:"repoPath"`
+		Name          string `json:"name"`
+		RepoPath      string `json:"repoPath"`
 		DefaultBranch string `json:"defaultBranch"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" || body.RepoPath == "" {
@@ -244,9 +245,10 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getTask(w http.ResponseWriter, id string) {
 	var workspaceId, title, desc, status, submitState, createdAt, updatedAt string
+	var workflowTemplateID sql.NullString
 	var planRound, fixRound int
-	err := s.db.QueryRow(`SELECT workspace_id, title, description, status, plan_round, fix_round, submit_state, created_at, updated_at FROM tasks WHERE id = ?`, id).
-		Scan(&workspaceId, &title, &desc, &status, &planRound, &fixRound, &submitState, &createdAt, &updatedAt)
+	err := s.db.QueryRow(`SELECT workspace_id, title, description, status, plan_round, fix_round, submit_state, created_at, updated_at, workflow_template_id FROM tasks WHERE id = ?`, id).
+		Scan(&workspaceId, &title, &desc, &status, &planRound, &fixRound, &submitState, &createdAt, &updatedAt, &workflowTemplateID)
 	if err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
 		return
@@ -258,6 +260,9 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 	task := map[string]any{
 		"id": id, "workspaceId": workspaceId, "title": title, "description": desc, "status": status,
 		"planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": createdAt, "updatedAt": updatedAt,
+	}
+	if workflowTemplateID.Valid {
+		task["workflowTemplateId"] = workflowTemplateID.String
 	}
 	var wsName, wsRepo, wsBranch string
 	if err := s.db.QueryRow(`SELECT name, repo_path, default_branch FROM workspaces WHERE id = ?`, workspaceId).
@@ -316,14 +321,25 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 		}
 	}
 	task["messages"] = msgList
+	if wfRun, err := workflows.NewService(s.db).GetWorkflowRunStateForTask(id); err == nil {
+		task["workflowRun"] = wfRun
+		task["stepRuns"] = wfRun.StepRuns
+		for _, sr := range wfRun.StepRuns {
+			if st, _ := sr["status"].(string); st == "ready" || st == "pending_unassigned" {
+				task["currentStep"] = sr
+				break
+			}
+		}
+	}
 	writeJSON(w, task)
 }
 
 func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		WorkspaceId string `json:"workspaceId"`
-		Title       string `json:"title"`
-		Description string `json:"description"`
+		WorkspaceId        string `json:"workspaceId"`
+		Title              string `json:"title"`
+		Description        string `json:"description"`
+		WorkflowTemplateID string `json:"workflowTemplateId"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.WorkspaceId == "" || body.Title == "" {
 		writeJSONError(w, "workspaceId and title required", http.StatusBadRequest)
@@ -331,8 +347,8 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	id := common.UUID()
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.Exec(`INSERT INTO tasks (id, workspace_id, title, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, body.WorkspaceId, body.Title, body.Description, now, now)
+	_, err := s.db.Exec(`INSERT INTO tasks (id, workspace_id, title, description, workflow_template_id, created_at, updated_at) VALUES (?, ?, ?, ?, NULLIF(?,''), ?, ?)`,
+		id, body.WorkspaceId, body.Title, body.Description, body.WorkflowTemplateID, now, now)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
@@ -340,8 +356,20 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	var status, submitState string
 	var planRound, fixRound int
 	s.db.QueryRow(`SELECT status, plan_round, fix_round, submit_state FROM tasks WHERE id = ?`, id).Scan(&status, &planRound, &fixRound, &submitState)
+	var workflowRunID string
+	if strings.TrimSpace(body.WorkflowTemplateID) != "" {
+		wf := workflows.NewService(s.db)
+		rid, runErr := wf.CreateRunFromTask(id, body.WorkspaceId, body.WorkflowTemplateID, workflows.NewDBWorkerResolver(s.db))
+		if runErr == nil {
+			workflowRunID = rid
+		}
+	}
 	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, map[string]any{"id": id, "workspaceId": body.WorkspaceId, "title": body.Title, "description": body.Description, "status": status, "planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": now, "updatedAt": now})
+	out := map[string]any{"id": id, "workspaceId": body.WorkspaceId, "title": body.Title, "description": body.Description, "status": status, "planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": now, "updatedAt": now, "workflowTemplateId": body.WorkflowTemplateID}
+	if workflowRunID != "" {
+		out["workflowRunId"] = workflowRunID
+	}
+	writeJSON(w, out)
 }
 
 func (s *Server) updateTaskStatus(w http.ResponseWriter, r *http.Request, taskID string) {
@@ -472,9 +500,9 @@ func (s *Server) enqueueTask(w http.ResponseWriter, r *http.Request, taskID stri
 		return
 	}
 	var body struct {
-		Mode              string         `json:"mode"`
-		Payload           map[string]any `json:"payload"`
-		AssignedWorkerID  string         `json:"assigned_worker_id"`
+		Mode             string         `json:"mode"`
+		Payload          map[string]any `json:"payload"`
+		AssignedWorkerID string         `json:"assigned_worker_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Mode == "" || body.Payload == nil {
 		writeJSONError(w, "mode and payload required", http.StatusBadRequest)
@@ -531,10 +559,10 @@ func (s *Server) actionSubmit(w http.ResponseWriter, taskID string) {
 		branch = "bb/task-" + taskID + "-submit"
 	}
 	payload := map[string]any{
-		"workspace":       map[string]any{"repo_path": repoPath, "base_branch": defaultBranch},
+		"workspace":        map[string]any{"repo_path": repoPath, "base_branch": defaultBranch},
 		"workdir_strategy": "git_worktree",
-		"branch":         branch,
-		"submit":         map[string]any{"actions": []string{"commit", "push"}, "commit_message": "BullBoard: " + taskTitle, "remote": "origin"},
+		"branch":           branch,
+		"submit":           map[string]any{"actions": []string{"commit", "push"}, "commit_message": "BullBoard: " + taskTitle, "remote": "origin"},
 	}
 	runId, jobId := s.enqueue(runEnqueueParams{TaskID: taskID, WorkspaceID: workspaceId, Mode: "SUBMIT", Payload: payload, AssignedWorkerID: "default"})
 	w.WriteHeader(http.StatusCreated)

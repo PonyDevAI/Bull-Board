@@ -99,7 +99,15 @@ func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.HasPrefix(path, "/api/tasks") {
+		if strings.HasSuffix(path, "/workflow") {
+			s.apiWorkflowRoutes(w, r)
+			return
+		}
 		s.apiTasks(w, r)
+		return
+	}
+	if strings.HasPrefix(path, "/api/workflow-templates") || strings.HasPrefix(path, "/api/workflow-runs") {
+		s.apiWorkflowRoutes(w, r)
 		return
 	}
 	if strings.HasPrefix(path, "/api") {
@@ -227,6 +235,10 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 	// workspaces/tasks 等需鉴权后交给 staticOrSPA 内部分发
 	if strings.HasPrefix(path, "/api/") {
 		if !s.authRequired(w, r) {
+			return
+		}
+		if strings.HasPrefix(path, "/api/workflow-templates") || strings.HasPrefix(path, "/api/workflow-runs") || strings.HasSuffix(path, "/workflow") {
+			s.apiWorkflowRoutes(w, r)
 			return
 		}
 		s.staticOrSPA(w, r)

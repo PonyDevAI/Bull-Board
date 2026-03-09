@@ -35,6 +35,7 @@ export const sidebarNavGroups: NavGroup[] = [
     items: [
       { to: "/dashboard/execution-backends", label: "Execution Backends", icon: "Cpu", badge: "2", badgeVariant: "success" },
       { to: "/dashboard/workers", label: "Workers", icon: "Bot" },
+      { to: "/dashboard/workflow-templates", label: "Workflow Templates", icon: "Route" },
       { to: "/dashboard/workspaces", label: "Workspaces", icon: "FolderOpen" },
       { to: "/dashboard/artifacts", label: "Artifacts", icon: "Package" },
     ],
