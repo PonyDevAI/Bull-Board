@@ -2,8 +2,10 @@ package common
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -38,14 +40,6 @@ func initSchema(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, key_hash TEXT NOT NULL, key_prefix TEXT NOT NULL, created_at TEXT NOT NULL, last_used_at TEXT, revoked_at TEXT);
-		CREATE TABLE IF NOT EXISTS workspaces (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			repo_path TEXT NOT NULL,
-			default_branch TEXT NOT NULL DEFAULT 'main',
-			created_at TEXT NOT NULL,
-			updated_at TEXT NOT NULL
-		);
 		CREATE TABLE IF NOT EXISTS tasks (
 			id TEXT PRIMARY KEY,
 			workspace_id TEXT NOT NULL,
@@ -136,42 +130,145 @@ func initSchema(db *sql.DB) error {
 }
 
 func initSchemaWorkforceV2(db *sql.DB) error {
-	schemaBytes, err := os.ReadFile("db/schema_v2.sql")
+	schemaBytes, err := readSchemaV2()
 	if err != nil {
 		return err
 	}
 	for _, stmt := range strings.Split(string(schemaBytes), ";") {
 		s := strings.TrimSpace(stmt)
-		if s == "" || strings.HasPrefix(s, "PRAGMA") {
+		if s == "" || strings.HasPrefix(strings.ToUpper(s), "PRAGMA") {
 			continue
 		}
-		if !strings.HasPrefix(strings.ToUpper(s), "CREATE TABLE") {
+		upper := strings.ToUpper(s)
+		switch {
+		case strings.HasPrefix(upper, "CREATE TABLE"):
+			tbl, ok := tableNameFromCreate(s)
+			if !ok || !isWorkforceTable(tbl) {
+				continue
+			}
+			s = strings.Replace(s, "CREATE TABLE "+tbl, "CREATE TABLE IF NOT EXISTS "+tbl, 1)
+		case strings.HasPrefix(upper, "CREATE UNIQUE INDEX"), strings.HasPrefix(upper, "CREATE INDEX"):
+			tbl, ok := tableNameFromIndex(s)
+			if !ok || !isWorkforceTable(tbl) {
+				continue
+			}
+			s = strings.Replace(s, "CREATE UNIQUE INDEX", "CREATE UNIQUE INDEX IF NOT EXISTS", 1)
+			s = strings.Replace(s, "CREATE INDEX", "CREATE INDEX IF NOT EXISTS", 1)
+		default:
 			continue
 		}
-		tbl, ok := tableNameFromCreate(s)
-		if !ok || !isWorkforceTable(tbl) {
-			continue
-		}
-		s = strings.Replace(s, "CREATE TABLE "+tbl, "CREATE TABLE IF NOT EXISTS "+tbl, 1)
 		if _, err := db.Exec(s); err != nil {
+			return fmt.Errorf("apply workforce schema statement: %w", err)
+		}
+	}
+	if err := seedDefaultWorkforceData(db); err != nil {
+		return err
+	}
+	return validateWorkforceSchema(db)
+}
+
+func seedDefaultWorkforceData(db *sql.DB) error {
+	seedStatements := []struct {
+		name string
+		sql  string
+		args []any
+	}{
+		{name: "default home", sql: `INSERT OR IGNORE INTO homes (id,name) VALUES ('default','Default Home')`},
+		{name: "default workspace", sql: `INSERT OR IGNORE INTO workspaces (id,home_id,name) VALUES ('default-workspace','default','Default Workspace')`},
+		{name: "default group", sql: `INSERT OR IGNORE INTO groups (id,home_id,workspace_id,name) VALUES ('default-group','default','default-workspace','Default Group')`},
+		{name: "openclaw connector", sql: `INSERT OR IGNORE INTO connectors (id,home_id,code,name,category) VALUES ('openclaw','default','openclaw','OpenClaw','execution_backend')`},
+	}
+	for _, stmt := range seedStatements {
+		if _, err := db.Exec(stmt.sql, stmt.args...); err != nil {
+			return fmt.Errorf("seed %s: %w", stmt.name, err)
+		}
+	}
+
+	for _, role := range []string{"Planner", "Researcher", "Coder", "Reviewer", "Writer", "Operator"} {
+		if _, err := db.Exec(`INSERT OR IGNORE INTO roles (id,home_id,name,code) VALUES (lower(replace(?,' ', '-')),'default',?,lower(replace(?,' ', '_')))`, role, role, role); err != nil {
+			return fmt.Errorf("seed role %s: %w", role, err)
+		}
+	}
+	return nil
+}
+
+func validateWorkforceSchema(db *sql.DB) error {
+	required := map[string][]string{
+		"homes":                 {"id", "name"},
+		"workspaces":            {"id", "home_id", "name"},
+		"groups":                {"id", "home_id", "workspace_id", "name"},
+		"roles":                 {"id", "home_id", "name", "code"},
+		"model_profiles":        {"id", "home_id", "name"},
+		"integration_instances": {"id", "home_id", "connector_code"},
+		"agent_apps":            {"id", "home_id", "name"},
+		"execution_backends":    {"id", "home_id", "connector_code"},
+		"workers":               {"id", "role_id", "agent_app_id", "execution_backend_id"},
+	}
+	for table, columns := range required {
+		if err := ensureTableColumns(db, table, columns); err != nil {
 			return err
 		}
 	}
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_roles_home ON roles(home_id)`)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_model_profiles_home ON model_profiles(home_id)`)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_integrations_home ON integration_instances(home_id)`)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_agent_apps_home ON agent_apps(home_id)`)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_execution_backends_home ON execution_backends(home_id)`)
-	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_workers_bindings ON workers(home_id, role_id, agent_app_id, execution_backend_id)`)
-
-	_, _ = db.Exec(`INSERT OR IGNORE INTO homes (id,name) VALUES ('default','Default Home')`)
-	_, _ = db.Exec(`INSERT OR IGNORE INTO workspaces (id,home_id,name) VALUES ('default-workspace','default','Default Workspace')`)
-	_, _ = db.Exec(`INSERT OR IGNORE INTO groups (id,home_id,workspace_id,name) VALUES ('default-group','default','default-workspace','Default Group')`)
-	for _, role := range []string{"Planner", "Researcher", "Coder", "Reviewer", "Writer", "Operator"} {
-		_, _ = db.Exec(`INSERT OR IGNORE INTO roles (id,home_id,name,code) VALUES (lower(replace(?,' ', '-')),'default',?,lower(replace(?,' ', '_')))`, role, role, role)
-	}
-	_, _ = db.Exec(`INSERT OR IGNORE INTO connectors (id,home_id,code,name,category) VALUES ('openclaw','default','openclaw','OpenClaw','execution_backend')`)
 	return nil
+}
+
+func ensureTableColumns(db *sql.DB, table string, columns []string) error {
+	rows, err := db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return fmt.Errorf("check table %s: %w", table, err)
+	}
+	defer rows.Close()
+
+	existing := map[string]bool{}
+	for rows.Next() {
+		var cid int
+		var name, colType string
+		var notNull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &dflt, &pk); err != nil {
+			return fmt.Errorf("scan table %s columns: %w", table, err)
+		}
+		existing[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate table %s columns: %w", table, err)
+	}
+	if len(existing) == 0 {
+		return fmt.Errorf("missing required table: %s", table)
+	}
+	for _, col := range columns {
+		if !existing[col] {
+			return fmt.Errorf("table %s missing required column %s", table, col)
+		}
+	}
+	return nil
+}
+
+func readSchemaV2() ([]byte, error) {
+	if b, err := os.ReadFile("db/schema_v2.sql"); err == nil {
+		return b, nil
+	}
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, fmt.Errorf("resolve schema_v2.sql path")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
+	return os.ReadFile(filepath.Join(repoRoot, "db", "schema_v2.sql"))
+}
+
+func tableNameFromIndex(statement string) (string, bool) {
+	upper := strings.ToUpper(statement)
+	onPos := strings.Index(upper, " ON ")
+	if onPos == -1 {
+		return "", false
+	}
+	afterOn := strings.TrimSpace(statement[onPos+4:])
+	for i, r := range afterOn {
+		if r == ' ' || r == '(' {
+			return strings.TrimSpace(afterOn[:i]), true
+		}
+	}
+	return "", false
 }
 
 func tableNameFromCreate(statement string) (string, bool) {
