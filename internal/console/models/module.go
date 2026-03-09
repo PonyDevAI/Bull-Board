@@ -1,3 +1,7 @@
 package models
 
-// Module placeholder for Bull-Board 2.0 models domain.
+import "database/sql"
+
+type Repository struct{ DB *sql.DB }
+
+func NewRepository(db *sql.DB) *Repository { return &Repository{DB: db} }

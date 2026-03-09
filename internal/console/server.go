@@ -215,6 +215,14 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.systemUpgradePlan(w, r)
 		return
 	}
+
+	if path == "/api/workers/pull" && r.Method == http.MethodGet {
+		if !s.authRequired(w, r) {
+			return
+		}
+		s.workerPull(w, r)
+		return
+	}
 	// /api/jobs/:id/report（执行结果上报）
 	if strings.HasPrefix(path, "/api/jobs/") && strings.HasSuffix(path, "/report") && r.Method == http.MethodPost {
 		if !s.authRequired(w, r) {
@@ -224,11 +232,11 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// /api/workers 需鉴权
-	if strings.HasPrefix(path, "/api/workers") {
+	if strings.HasPrefix(path, "/api/roles") || strings.HasPrefix(path, "/api/model-profiles") || strings.HasPrefix(path, "/api/integrations") || strings.HasPrefix(path, "/api/agent-apps") || strings.HasPrefix(path, "/api/execution-backends") || strings.HasPrefix(path, "/api/workers") {
 		if !s.authRequired(w, r) {
 			return
 		}
-		s.apiWorkersRoutes(w, r)
+		s.apiWorkforceRoutes(w, r)
 		return
 	}
 	// workspaces/tasks 等需鉴权后交给 staticOrSPA 内部分发

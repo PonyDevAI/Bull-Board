@@ -137,6 +137,9 @@ func initSchema(db *sql.DB) error {
 	if err := initSchemaCompanyWorkers(db); err != nil {
 		return err
 	}
+	if err := initSchemaWorkforceV2(db); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -192,4 +195,169 @@ func migrateRunnersToPersons(db *sql.DB) {
 	_, _ = db.Exec(`ALTER TABLE workers ADD COLUMN person_id TEXT`)
 	_, _ = db.Exec(`UPDATE workers SET person_id = runner_id WHERE person_id IS NULL AND runner_id IS NOT NULL`)
 	_, _ = db.Exec(`DROP TABLE runners`)
+}
+
+func initSchemaWorkforceV2(db *sql.DB) error {
+	_, err := db.Exec(`
+		PRAGMA foreign_keys = ON;
+		CREATE TABLE IF NOT EXISTS homes (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE TABLE IF NOT EXISTS workspaces_v2 (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS groups_v2 (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			workspace_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
+			FOREIGN KEY (workspace_id) REFERENCES workspaces_v2(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS roles (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			code TEXT NOT NULL,
+			description TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(home_id, code),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS model_profiles (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			provider TEXT NOT NULL,
+			model_name TEXT NOT NULL,
+			temperature REAL NOT NULL DEFAULT 0,
+			reasoning_level TEXT NOT NULL DEFAULT 'standard',
+			tool_policy_json TEXT NOT NULL DEFAULT '{}',
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS connectors (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			code TEXT NOT NULL,
+			name TEXT NOT NULL,
+			category TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(home_id, code),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS integration_instances (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			connector_code TEXT NOT NULL,
+			name TEXT NOT NULL,
+			endpoint TEXT,
+			auth_type TEXT,
+			auth_config_json TEXT NOT NULL DEFAULT '{}',
+			status TEXT NOT NULL,
+			metadata_json TEXT NOT NULL DEFAULT '{}',
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS execution_backends (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			connector_code TEXT NOT NULL,
+			integration_instance_id TEXT,
+			name TEXT NOT NULL,
+			type TEXT NOT NULL,
+			endpoint_url TEXT NOT NULL,
+			config_json TEXT NOT NULL DEFAULT '{}',
+			capabilities_json TEXT NOT NULL DEFAULT '{}',
+			status TEXT NOT NULL,
+			last_seen_at TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
+			FOREIGN KEY (integration_instance_id) REFERENCES integration_instances(id) ON DELETE SET NULL
+		);
+		CREATE TABLE IF NOT EXISTS agent_apps (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			description TEXT,
+			default_model_profile_id TEXT,
+			system_prompt TEXT,
+			skill_policy_json TEXT NOT NULL DEFAULT '{}',
+			plugin_policy_json TEXT NOT NULL DEFAULT '{}',
+			tool_policy_json TEXT NOT NULL DEFAULT '{}',
+			default_execution_backend_id TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
+			FOREIGN KEY (default_model_profile_id) REFERENCES model_profiles(id) ON DELETE SET NULL,
+			FOREIGN KEY (default_execution_backend_id) REFERENCES execution_backends(id) ON DELETE SET NULL
+		);
+		CREATE TABLE IF NOT EXISTS agent_app_skills (
+			agent_app_id TEXT NOT NULL,
+			skill_code TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (agent_app_id, skill_code),
+			FOREIGN KEY (agent_app_id) REFERENCES agent_apps(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS agent_app_plugins (
+			agent_app_id TEXT NOT NULL,
+			plugin_code TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (agent_app_id, plugin_code),
+			FOREIGN KEY (agent_app_id) REFERENCES agent_apps(id) ON DELETE CASCADE
+		);
+		CREATE TABLE IF NOT EXISTS workers (
+			id TEXT PRIMARY KEY,
+			home_id TEXT NOT NULL,
+			workspace_id TEXT NOT NULL,
+			group_id TEXT NOT NULL,
+			role_id TEXT NOT NULL,
+			agent_app_id TEXT NOT NULL,
+			execution_backend_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			status TEXT NOT NULL,
+			max_concurrency INTEGER NOT NULL DEFAULT 1,
+			config_override_json TEXT NOT NULL DEFAULT '{}',
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
+			FOREIGN KEY (workspace_id) REFERENCES workspaces_v2(id) ON DELETE RESTRICT,
+			FOREIGN KEY (group_id) REFERENCES groups_v2(id) ON DELETE RESTRICT,
+			FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
+			FOREIGN KEY (agent_app_id) REFERENCES agent_apps(id) ON DELETE RESTRICT,
+			FOREIGN KEY (execution_backend_id) REFERENCES execution_backends(id) ON DELETE RESTRICT
+		);
+		CREATE INDEX IF NOT EXISTS idx_roles_home ON roles(home_id);
+		CREATE INDEX IF NOT EXISTS idx_model_profiles_home ON model_profiles(home_id);
+		CREATE INDEX IF NOT EXISTS idx_integrations_home ON integration_instances(home_id);
+		CREATE INDEX IF NOT EXISTS idx_agent_apps_home ON agent_apps(home_id);
+		CREATE INDEX IF NOT EXISTS idx_execution_backends_home ON execution_backends(home_id);
+		CREATE INDEX IF NOT EXISTS idx_workers_bindings ON workers(home_id, role_id, agent_app_id, execution_backend_id);
+	`)
+	if err != nil {
+		return err
+	}
+	_, _ = db.Exec(`INSERT OR IGNORE INTO homes (id,name) VALUES ('default','Default Home')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO workspaces_v2 (id,home_id,name) VALUES ('default-workspace','default','Default Workspace')`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO groups_v2 (id,home_id,workspace_id,name) VALUES ('default-group','default','default-workspace','Default Group')`)
+	for _, role := range []string{"Planner", "Researcher", "Coder", "Reviewer", "Writer", "Operator"} {
+		_, _ = db.Exec(`INSERT OR IGNORE INTO roles (id,home_id,name,code) VALUES (lower(replace(?,' ', '-')),'default',?,lower(replace(?,' ', '_')))`, role, role, role)
+	}
+	_, _ = db.Exec(`INSERT OR IGNORE INTO connectors (id,home_id,code,name,category) VALUES ('openclaw','default','openclaw','OpenClaw','execution_backend')`)
+	return nil
 }

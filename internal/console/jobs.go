@@ -13,9 +13,9 @@ import (
 
 const defaultLeaseSeconds = 600
 
-// GET /api/person/pull?person_id=...&limit=... 拉取属于该 person 的 workers 的 queued jobs，原子写租约
-func (s *Server) personPull(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet || !strings.HasPrefix(r.URL.Path, "/api/person/pull") {
+// GET /api/workers/pull?worker_id=...&limit=... 拉取 worker 的 queued jobs，原子写租约
+func (s *Server) workerPull(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet || !strings.HasPrefix(r.URL.Path, "/api/workers/pull") {
 		http.NotFound(w, r)
 		return
 	}
@@ -24,9 +24,9 @@ func (s *Server) personPull(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"jobs": []any{}})
 		return
 	}
-	personID := r.URL.Query().Get("person_id")
-	if personID == "" {
-		writeJSONError(w, "person_id required", http.StatusBadRequest)
+	workerID := r.URL.Query().Get("worker_id")
+	if workerID == "" {
+		writeJSONError(w, "worker_id required", http.StatusBadRequest)
 		return
 	}
 	limit := 1
@@ -42,11 +42,11 @@ func (s *Server) personPull(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Query(`
 		SELECT j.id, j.run_id, j.task_id, j.workspace_id, j.mode, j.payload_json, j.assigned_worker_id
 		FROM jobs j
-		INNER JOIN workers w ON j.assigned_worker_id = w.id AND w.person_id = ?
+		INNER JOIN workers w ON j.assigned_worker_id = w.id AND w.id = ?
 		WHERE j.status = 'queued' AND (j.locked_until IS NULL OR j.locked_until < ?)
 		ORDER BY j.priority DESC, j.available_at ASC
 		LIMIT ?
-	`, personID, now, limit)
+	`, workerID, now, limit)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
@@ -106,10 +106,10 @@ func (s *Server) jobReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Status   string          `json:"status"`
-		Summary  string          `json:"summary"`
+		Status    string           `json:"status"`
+		Summary   string           `json:"summary"`
 		Artifacts []map[string]any `json:"artifacts"`
-		Logs     string          `json:"logs"`
+		Logs      string           `json:"logs"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.Status == "" {
