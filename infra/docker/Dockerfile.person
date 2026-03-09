@@ -1,29 +1,3 @@
-# Bull Board Person（Go 执行器 bb-person）+ git（用于 worktree）
-# 构建上下文: 仓库根目录，例: docker build -f infra/docker/Dockerfile.person -t bullboard-person .
-FROM golang:1.21-alpine AS builder
-
-WORKDIR /app
-
-RUN apk add --no-cache git
-
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bb-person ./cmd/bb-person
-
-FROM alpine:3.19
-
-RUN apk add --no-cache git ca-certificates
-
-WORKDIR /app
-
-COPY --from=builder /app/bb-person .
-
-ENV SQLITE_PATH=/shared/data/bullboard.db
-ENV ARTIFACTS_DIR=/shared/artifacts
-ENV API_BASE_URL=http://console:3000
-ENV PERSON_ID=person-1
-ENV MAX_CONCURRENCY=1
-ENV LEASE_SECONDS=600
-
-CMD ["./bb-person"]
+# Deprecated: Person runtime container removed in Bull-Board 2.0.
+# Use the console service and execution backend integrations instead.
+FROM scratch

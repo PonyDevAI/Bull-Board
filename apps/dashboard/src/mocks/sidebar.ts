@@ -33,7 +33,7 @@ export const sidebarNavGroups: NavGroup[] = [
   },
   {
     items: [
-      { to: "/dashboard/persons", label: "执行器 (Persons)", icon: "Cpu", badge: "2", badgeVariant: "success" },
+      { to: "/dashboard/execution-backends", label: "Execution Backends", icon: "Cpu", badge: "2", badgeVariant: "success" },
       { to: "/dashboard/workers", label: "Workers", icon: "Bot" },
       { to: "/dashboard/workspaces", label: "Workspaces", icon: "FolderOpen" },
       { to: "/dashboard/artifacts", label: "Artifacts", icon: "Package" },

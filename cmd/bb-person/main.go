@@ -1,17 +1,6 @@
-// bb-person：Person 执行器（原 Runner），与 console 通信（heartbeat/pull/report）
 package main
 
-import (
-	"os"
-
-	"github.com/PonyDevAI/Bull-Board/internal/person"
-)
-
+// Deprecated entrypoint intentionally disabled in Bull-Board 2.0.
 func main() {
-	prefix := os.Getenv("PREFIX")
-	if prefix == "" {
-		prefix = "/opt/bull-board"
-	}
-	cfg := person.LoadConfig(prefix)
-	person.Run(cfg)
+	panic("bb-person is removed in Bull-Board 2.0; use bb server")
 }
