@@ -37,6 +37,7 @@ CREATE TABLE roles (
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
 );
+CREATE UNIQUE INDEX idx_roles_home_code ON roles(home_id, code);
 
 CREATE TABLE model_profiles (
   id TEXT PRIMARY KEY,
@@ -51,6 +52,7 @@ CREATE TABLE model_profiles (
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
 );
+CREATE INDEX idx_model_profiles_home_id ON model_profiles(home_id);
 
 CREATE TABLE connectors (
   id TEXT PRIMARY KEY,
@@ -77,6 +79,7 @@ CREATE TABLE integration_instances (
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
 );
+CREATE INDEX idx_integration_instances_home_id ON integration_instances(home_id);
 
 CREATE TABLE plugins (
   id TEXT PRIMARY KEY,
@@ -110,6 +113,7 @@ CREATE TABLE agent_apps (
   FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
   FOREIGN KEY (default_model_profile_id) REFERENCES model_profiles(id) ON DELETE SET NULL
 );
+CREATE INDEX idx_agent_apps_home_id ON agent_apps(home_id);
 
 CREATE TABLE agent_app_skills (
   agent_app_id TEXT NOT NULL,
@@ -146,6 +150,7 @@ CREATE TABLE execution_backends (
   FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
   FOREIGN KEY (integration_instance_id) REFERENCES integration_instances(id) ON DELETE SET NULL
 );
+CREATE INDEX idx_execution_backends_home_id ON execution_backends(home_id);
 
 CREATE TABLE workers (
   id TEXT PRIMARY KEY,
@@ -274,11 +279,6 @@ CREATE TABLE artifacts (
 
 CREATE INDEX idx_workspaces_home_id ON workspaces(home_id);
 CREATE INDEX idx_groups_workspace_id ON groups(workspace_id);
-CREATE INDEX idx_roles_group_id ON roles(group_id);
-CREATE INDEX idx_model_profiles_workspace_id ON model_profiles(workspace_id);
-CREATE INDEX idx_integration_instances_workspace_id ON integration_instances(workspace_id);
-CREATE INDEX idx_agent_apps_workspace_id ON agent_apps(workspace_id);
-CREATE INDEX idx_execution_backends_workspace_id ON execution_backends(workspace_id);
 CREATE INDEX idx_workers_workspace_id ON workers(workspace_id);
 CREATE INDEX idx_tasks_workspace_id ON tasks(workspace_id);
 CREATE INDEX idx_workflow_runs_workspace_id ON workflow_runs(workspace_id);
