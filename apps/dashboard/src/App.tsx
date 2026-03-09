@@ -10,7 +10,12 @@ import { KanbanPage } from "@/pages/KanbanPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { LogsPage } from "@/pages/LogsPage";
 import { LoginPage } from "@/pages/LoginPage";
-import { WorkersPage } from "@/pages/WorkersPage";
+import { RolesPage } from "@/pages/RolesPage";
+import { ModelProfilesPage } from "@/pages/ModelProfilesPage";
+import { IntegrationsPage } from "@/pages/IntegrationsPage";
+import { AgentAppsPage } from "@/pages/AgentAppsPage";
+import { ExecutionBackendsPage } from "@/pages/ExecutionBackendsPage";
+import { WorkersV2Page } from "@/pages/WorkersV2Page";
 
 function Home() {
   return (
@@ -199,12 +204,14 @@ export default function App() {
           <Route path="tasks" element={<div className="text-muted-foreground p-4">Tasks 占位</div>} />
           <Route path="backlog" element={<div className="text-muted-foreground p-4">Backlog 占位</div>} />
           <Route path="runs" element={<div className="text-muted-foreground p-4">Runs 占位</div>} />
-          <Route path="execution-backends" element={<div className="text-muted-foreground p-4">Execution Backends 占位</div>} />
-          <Route path="workers" element={<WorkersPage />} />
+          <Route path="execution-backends" element={<ExecutionBackendsPage />} />
+          <Route path="workers" element={<WorkersV2Page />} />
           <Route path="workspaces" element={<div className="text-muted-foreground p-4">Workspaces 占位</div>} />
           <Route path="artifacts" element={<div className="text-muted-foreground p-4">Artifacts 占位</div>} />
-          <Route path="models" element={<div className="text-muted-foreground p-4">Models 占位</div>} />
-          <Route path="roles" element={<div className="text-muted-foreground p-4">Roles & Routing 占位</div>} />
+          <Route path="models" element={<ModelProfilesPage />} />
+          <Route path="roles" element={<RolesPage />} />
+          <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="agent-apps" element={<AgentAppsPage />} />
           <Route path="policies" element={<div className="text-muted-foreground p-4">Policies 占位</div>} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="audit" element={<div className="text-muted-foreground p-4">Audit 占位</div>} />

@@ -361,3 +361,54 @@ export async function getPersons(): Promise<Person[]> {
   const r = await fetch(API + "/persons", defaultFetchOptions);
   return handleResponse(r);
 }
+
+export type WorkforceResource = Record<string, any> & { id: string };
+
+async function listResource(path: string): Promise<WorkforceResource[]> {
+  const r = await fetch(API + path, defaultFetchOptions);
+  const data = await handleResponse<{ items: WorkforceResource[] }>(r);
+  return data.items ?? [];
+}
+
+async function createResource(path: string, body: Record<string, any>): Promise<WorkforceResource> {
+  const r = await fetch(API + path, {
+    ...defaultFetchOptions,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await handleResponse<{ item: WorkforceResource }>(r);
+  return data.item;
+}
+
+async function updateResource(path: string, id: string, body: Record<string, any>): Promise<WorkforceResource> {
+  const r = await fetch(API + path + "/" + id, {
+    ...defaultFetchOptions,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await handleResponse<{ item: WorkforceResource }>(r);
+  return data.item;
+}
+
+export const workforceApi = {
+  listRoles: () => listResource("/roles"),
+  createRole: (body: Record<string, any>) => createResource("/roles", body),
+  updateRole: (id: string, body: Record<string, any>) => updateResource("/roles", id, body),
+  listModelProfiles: () => listResource("/model-profiles"),
+  createModelProfile: (body: Record<string, any>) => createResource("/model-profiles", body),
+  updateModelProfile: (id: string, body: Record<string, any>) => updateResource("/model-profiles", id, body),
+  listIntegrations: () => listResource("/integrations"),
+  createIntegration: (body: Record<string, any>) => createResource("/integrations", body),
+  updateIntegration: (id: string, body: Record<string, any>) => updateResource("/integrations", id, body),
+  listAgentApps: () => listResource("/agent-apps"),
+  createAgentApp: (body: Record<string, any>) => createResource("/agent-apps", body),
+  updateAgentApp: (id: string, body: Record<string, any>) => updateResource("/agent-apps", id, body),
+  listExecutionBackends: () => listResource("/execution-backends"),
+  createExecutionBackend: (body: Record<string, any>) => createResource("/execution-backends", body),
+  updateExecutionBackend: (id: string, body: Record<string, any>) => updateResource("/execution-backends", id, body),
+  listWorkers: () => listResource("/workers"),
+  createWorker: (body: Record<string, any>) => createResource("/workers", body),
+  updateWorker: (id: string, body: Record<string, any>) => updateResource("/workers", id, body),
+};

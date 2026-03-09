@@ -18,58 +18,64 @@ CREATE TABLE workspaces (
 
 CREATE TABLE groups (
   id TEXT PRIMARY KEY,
+  home_id TEXT NOT NULL,
   workspace_id TEXT NOT NULL,
   name TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
   FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
 
 CREATE TABLE roles (
   id TEXT PRIMARY KEY,
-  group_id TEXT NOT NULL,
-  workspace_id TEXT NOT NULL,
+  home_id TEXT NOT NULL,
   name TEXT NOT NULL,
+  code TEXT NOT NULL,
   description TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
 );
 
 CREATE TABLE model_profiles (
   id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
+  home_id TEXT NOT NULL,
+  name TEXT NOT NULL,
   provider TEXT NOT NULL,
   model_name TEXT NOT NULL,
-  config_json TEXT NOT NULL DEFAULT '{}',
-  is_default INTEGER NOT NULL DEFAULT 0,
+  temperature REAL NOT NULL DEFAULT 0,
+  reasoning_level TEXT NOT NULL DEFAULT 'standard',
+  tool_policy_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
 );
 
 CREATE TABLE connectors (
   id TEXT PRIMARY KEY,
-  code TEXT NOT NULL UNIQUE,
+  home_id TEXT NOT NULL,
+  code TEXT NOT NULL,
   name TEXT NOT NULL,
-  kind TEXT NOT NULL,
-  capabilities_json TEXT NOT NULL DEFAULT '{}',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  category TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
 );
 
 CREATE TABLE integration_instances (
   id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
-  connector_id TEXT NOT NULL,
+  home_id TEXT NOT NULL,
+  connector_code TEXT NOT NULL,
   name TEXT NOT NULL,
-  credentials_json TEXT NOT NULL DEFAULT '{}',
-  config_json TEXT NOT NULL DEFAULT '{}',
+  endpoint TEXT,
+  auth_type TEXT,
+  auth_config_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'active',
+  metadata_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
-  FOREIGN KEY (connector_id) REFERENCES connectors(id) ON DELETE RESTRICT
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE
 );
 
 CREATE TABLE plugins (
@@ -90,9 +96,9 @@ CREATE TABLE skills (
 
 CREATE TABLE agent_apps (
   id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
-  role_id TEXT,
+  home_id TEXT NOT NULL,
   name TEXT NOT NULL,
+  description TEXT,
   default_model_profile_id TEXT,
   system_prompt TEXT NOT NULL DEFAULT '',
   skill_policy_json TEXT NOT NULL DEFAULT '{}',
@@ -101,8 +107,7 @@ CREATE TABLE agent_apps (
   default_execution_backend_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
-  FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL,
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
   FOREIGN KEY (default_model_profile_id) REFERENCES model_profiles(id) ON DELETE SET NULL
 );
 
@@ -126,10 +131,11 @@ CREATE TABLE agent_app_plugins (
 
 CREATE TABLE execution_backends (
   id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
+  home_id TEXT NOT NULL,
   connector_code TEXT NOT NULL,
   integration_instance_id TEXT,
   name TEXT NOT NULL,
+  type TEXT NOT NULL,
   endpoint_url TEXT NOT NULL,
   config_json TEXT NOT NULL DEFAULT '{}',
   capabilities_json TEXT NOT NULL DEFAULT '{}',
@@ -137,12 +143,13 @@ CREATE TABLE execution_backends (
   last_seen_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
   FOREIGN KEY (integration_instance_id) REFERENCES integration_instances(id) ON DELETE SET NULL
 );
 
 CREATE TABLE workers (
   id TEXT PRIMARY KEY,
+  home_id TEXT NOT NULL,
   workspace_id TEXT NOT NULL,
   group_id TEXT NOT NULL,
   role_id TEXT NOT NULL,
@@ -154,6 +161,7 @@ CREATE TABLE workers (
   config_override_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (home_id) REFERENCES homes(id) ON DELETE CASCADE,
   FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
   FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE RESTRICT,
   FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
