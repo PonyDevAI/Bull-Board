@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
+
+	_ "modernc.org/sqlite"
 )
 
 func TestSchemaV2BootstrapAndColumns(t *testing.T) {
@@ -16,10 +18,14 @@ func TestSchemaV2BootstrapAndColumns(t *testing.T) {
 	}
 	defer db.Close()
 
-	requireHasColumn(t, db, "workspaces", "home_id")
-	requireHasColumn(t, db, "workers", "role_id")
-	requireHasColumn(t, db, "workers", "agent_app_id")
-	requireHasColumn(t, db, "workers", "execution_backend_id")
+	for _, table := range []string{"homes", "workspaces", "groups", "roles", "model_profiles", "integration_instances", "agent_apps", "execution_backends", "workers"} {
+		if !tableExists(t, db, table) {
+			t.Fatalf("expected canonical table %s to exist", table)
+		}
+	}
+
+	requireHasColumns(t, db, "workspaces", "id", "home_id", "name", "created_at", "updated_at")
+	requireHasColumns(t, db, "workers", "role_id", "agent_app_id", "execution_backend_id")
 
 	if tableExists(t, db, "persons") {
 		t.Fatalf("persons table must not be required for Bull-Board 2.0 bootstrap")
@@ -29,12 +35,35 @@ func TestSchemaV2BootstrapAndColumns(t *testing.T) {
 	assertSeedExists(t, db, "workspaces", "id = 'default-workspace' AND home_id = 'default'")
 	assertSeedExists(t, db, "groups", "id = 'default-group' AND workspace_id = 'default-workspace'")
 	assertSeedExists(t, db, "connectors", "id = 'openclaw' AND code = 'openclaw'")
+
+	if tableExists(t, db, "legacy_workspaces") {
+		t.Fatalf("legacy workspace table must not exist")
+	}
 }
 
-func requireHasColumn(t *testing.T, db *sql.DB, table, column string) {
+func TestSchemaV2ExecutesOnFreshSQLite(t *testing.T) {
+	tmp := t.TempDir()
+	db, err := sql.Open("sqlite", filepath.Join(tmp, "fresh.sqlite"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	defer db.Close()
+
+	schema, err := readSchemaV2()
+	if err != nil {
+		t.Fatalf("read schema_v2.sql: %v", err)
+	}
+	if _, err := db.Exec(string(schema)); err != nil {
+		t.Fatalf("execute schema_v2.sql: %v", err)
+	}
+
+	requireHasColumns(t, db, "workspaces", "id", "home_id", "name", "created_at", "updated_at")
+}
+
+func requireHasColumns(t *testing.T, db *sql.DB, table string, columns ...string) {
 	t.Helper()
-	if err := ensureTableColumns(db, table, []string{column}); err != nil {
-		t.Fatalf("table %s column %s missing: %v", table, column, err)
+	if err := ensureTableColumns(db, table, columns); err != nil {
+		t.Fatalf("table %s columns missing: %v", table, err)
 	}
 }
 
