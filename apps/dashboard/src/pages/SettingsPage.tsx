@@ -26,7 +26,7 @@ const SETTINGS_TABS = [
   { value: "access", label: "访问控制" },
   { value: "updates", label: "更新与维护" },
   { value: "secrets", label: "连接与凭据" },
-  { value: "persons", label: "运行与资源" },
+  { value: "execution_backends", label: "运行与资源" },
   { value: "backup", label: "数据与备份" },
   { value: "about", label: "关于" },
 ] as const;
@@ -612,11 +612,11 @@ export function SettingsPage() {
             </div>
           )}
 
-          {tab === "persons" && (
+          {tab === "execution_backends" && (
             <div className="space-y-0">
               <SettingRow
                 label="运行与资源"
-                description="Person（执行器）列表与资源配置（占位/已实现则展示）。"
+                description="Execution Backend列表与资源配置（占位/已实现则展示）。"
                 action={
                   <button type="button" disabled className={btnSecondary}>
                     管理
@@ -627,14 +627,14 @@ export function SettingsPage() {
               </SettingRow>
               <SettingRow
                 label="运行日志"
-                description="打开日志查看器，观察 Control 与 Person 的 systemd 日志。"
+                description="打开日志查看器，观察 Console 与 Execution Backend 的 systemd 日志。"
                 action={
                   <Link to="/dashboard/logs" className={btnSecondary}>
                     打开日志查看器
                   </Link>
                 }
               >
-                <PlaceholderInput value="bb.service / bb-person.service" />
+                <PlaceholderInput value="bb.service" />
               </SettingRow>
             </div>
           )}

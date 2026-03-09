@@ -21,7 +21,7 @@ export interface WorkspaceOption {
   slug?: string;
 }
 
-/** 宝塔侧栏菜单：Dashboard / Kanban / Tasks / Runs | Persons(执行器) / Workspaces / Artifacts | Models / Roles & Routing / Policies | Logs / Audit / Alerts | Settings */
+/** 宝塔侧栏菜单：Dashboard / Kanban / Tasks / Runs | Execution Backends / Workspaces / Artifacts | Models / Roles & Routing / Policies | Logs / Audit / Alerts | Settings */
 export const sidebarNavGroups: NavGroup[] = [
   {
     items: [

@@ -77,7 +77,7 @@ const defaultCards: KanbanCard[] = [
     priority: "high",
     assignee: "Bob",
     dueDate: "2025-03-10",
-    tags: ["person"],
+    tags: ["backend"],
     createdAt: "2025-02-23T11:00:00Z",
   },
   {

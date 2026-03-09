@@ -27,6 +27,6 @@ Resolve Worker → Resolve Agent App → Resolve Model Profile → Merge configu
 
 ## Anti-patterns (forbidden)
 - `/api/person`, `/api/person/pull`, `/api/person/report`, `/api/persons/register`, `/api/persons/heartbeat`
-- `internal/person`
-- `cmd/bb-person`
+- `/api/workers/pull`
+- `/api/jobs/:id/report`
 - any pull-worker runtime protocol as control-plane core
