@@ -12,7 +12,7 @@ var logsLines int
 
 func NewLogsCmd() *cobra.Command {
 	cc := &cobra.Command{
-		Use:   "logs [console|person]",
+		Use:   "logs [console]",
 		Short: "查看服务日志（journalctl）",
 		RunE:  runLogs,
 	}
@@ -25,8 +25,6 @@ func runLogs(c *cobra.Command, args []string) error {
 	which := "bb"
 	if len(args) > 0 {
 		switch args[0] {
-		case "person":
-			which = "bb-person"
 		case "console":
 			which = "bb"
 		default:

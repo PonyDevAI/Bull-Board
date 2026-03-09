@@ -2,7 +2,7 @@ import {
   kpis,
   disks,
   pipeline,
-  persons,
+  executionBackends,
   capacity,
   routing,
   quality,
@@ -11,7 +11,7 @@ import {
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DiskUsageRings } from "@/components/dashboard/DiskUsageRings";
 import { PipelineOverview } from "@/components/dashboard/PipelineOverview";
-import { PersonHealthPanel } from "@/components/dashboard/PersonHealthPanel";
+import { ExecutionBackendHealthPanel } from "@/components/dashboard/ExecutionBackendHealthPanel";
 import { CapacitySummary } from "@/components/dashboard/CapacitySummary";
 import { RoleModelRouting } from "@/components/dashboard/RoleModelRouting";
 import { QualityRiskPanel } from "@/components/dashboard/QualityRiskPanel";
@@ -43,7 +43,7 @@ export function DashboardHome() {
 
       {/* Row3: 执行器健康 + Capacity */}
       <div className="grid gap-gap md:grid-cols-2">
-        <PersonHealthPanel persons={persons} />
+        <ExecutionBackendHealthPanel backends={executionBackends} />
         <CapacitySummary
           total={capacity.total}
           used={capacity.used}

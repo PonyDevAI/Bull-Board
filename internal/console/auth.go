@@ -57,10 +57,10 @@ func randomAlphaNum(n int) (string, error) {
 	return string(b), nil
 }
 
-// EnsureFirstUser 首次启动时若无用户则创建初始账户与本地 person API key：
+// EnsureFirstUser 首次启动时若无用户则创建初始账户与本地 worker runtime API key：
 // - 开发环境固定 admin/admin
 // - 生产环境随机 username/password（各 8 位），并写入 initial_credentials.txt
-// 同时生成 local-person 专用 API key，并附加写入 initial_credentials.txt。
+// 同时生成 local-worker-runtime 专用 API key，并附加写入 initial_credentials.txt。
 func EnsureFirstUser(db *sql.DB, prefix string) error {
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&n); err != nil || n > 0 {
@@ -93,14 +93,14 @@ func EnsureFirstUser(db *sql.DB, prefix string) error {
 		return err
 	}
 
-	// 创建本地 person API key
+	// 创建本地 worker runtime API key
 	plainKey, hashHex, prefixKey, err := GenerateAPIKey()
 	if err != nil {
 		return err
 	}
 	apiKeyID := common.UUID()
 	if _, err := db.Exec(`INSERT INTO api_keys (id, name, key_hash, key_prefix, created_at) VALUES (?, ?, ?, ?, ?)`,
-		apiKeyID, "local-person", hashHex, prefixKey, now); err != nil {
+		apiKeyID, "local-worker-runtime", hashHex, prefixKey, now); err != nil {
 		return err
 	}
 
@@ -110,13 +110,13 @@ func EnsureFirstUser(db *sql.DB, prefix string) error {
 			_ = os.MkdirAll(dir, 0755)
 			f, err := os.OpenFile(credPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 			if err == nil {
-				_, _ = fmt.Fprintf(f, "username=%s\npassword=%s\nperson_api_key=%s\n", username, password, plainKey)
+				_, _ = fmt.Fprintf(f, "username=%s\npassword=%s\nworker_runtime_api_key=%s\n", username, password, plainKey)
 				f.Close()
 			}
 		}
 		fmt.Fprintf(os.Stderr, "[Bull Board] First run: user created. username=%s password=%s\n", username, password)
-		fmt.Fprintf(os.Stderr, "[Bull Board] First run: local person API key: %s\n", plainKey)
-		slog.Info("auth: first run, created admin and local-person api key", "username", username)
+		fmt.Fprintf(os.Stderr, "[Bull Board] First run: local worker runtime API key: %s\n", plainKey)
+		slog.Info("auth: first run, created admin and local-worker-runtime api key", "username", username)
 	}
 
 	return nil

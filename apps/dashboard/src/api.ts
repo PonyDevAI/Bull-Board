@@ -320,47 +320,22 @@ export async function actionContinueFix(taskId: string) {
   return handleResponse(r);
 }
 
-// --- Workers / Persons (PR5) ---
-export type Worker = {
-  id: string;
-  company_id: string;
-  dept_id: string;
-  agent_id: string;
-  person_id: string;
-  status: string;
-  max_concurrency: number;
-  current_job_id?: string;
-  last_seen_at?: string;
-  created_at: string;
-  agent_name?: string;
-  person_name?: string;
-  person_last_heartbeat?: string;
-};
-
-export type Person = {
-  id: string;
-  company_id: string;
-  type?: string;
+export type Role = WorkforceResource & { home_id: string; name: string; code: string; description?: string };
+export type ModelProfile = WorkforceResource & { home_id: string; name: string; provider: string; model_name: string };
+export type IntegrationInstance = WorkforceResource & { home_id: string; connector_code: string; name: string; status: string };
+export type AgentApp = WorkforceResource & { home_id: string; name: string; default_model_profile_id?: string; default_execution_backend_id?: string };
+export type ExecutionBackend = WorkforceResource & { home_id: string; connector_code: string; name: string; type: string; endpoint_url: string; status: string };
+export type Worker = WorkforceResource & {
+  home_id: string;
+  workspace_id: string;
+  group_id: string;
+  role_id: string;
+  agent_app_id: string;
+  execution_backend_id: string;
   name: string;
-  host: string;
-  capabilities_json: string;
-  max_concurrency: number;
-  version: string;
-  last_seen_at: string;
   status: string;
-  last_heartbeat: string;
+  max_concurrency: number;
 };
-
-export async function getWorkers(params?: { dept?: string; status?: string }): Promise<Worker[]> {
-  const q = new URLSearchParams(params as Record<string, string>).toString();
-  const r = await fetch(API + "/workers" + (q ? "?" + q : ""), defaultFetchOptions);
-  return handleResponse(r);
-}
-
-export async function getPersons(): Promise<Person[]> {
-  const r = await fetch(API + "/persons", defaultFetchOptions);
-  return handleResponse(r);
-}
 
 export type WorkforceResource = Record<string, any> & { id: string };
 

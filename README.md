@@ -1,6 +1,6 @@
 # Bull Board（bb）
 
-Web 看板：管理改代码任务，通过 SQLite 队列表派发给 **bb-person**（Person 执行器）执行。无 Postgres/Redis 依赖，目标机器无需 Node/Go 运行时（仅需二进制）。
+Web 看板：管理改代码任务，通过 SQLite 队列与 Worker 绑定关系进行任务编排执行。无 Postgres/Redis 依赖，目标机器无需 Node/Go 运行时（仅需二进制）。
 
 ## Bull Board — 个人自托管 AI 开发编排面板（宝塔式）
 
@@ -94,8 +94,8 @@ curl -fsSL https://raw.githubusercontent.com/PonyDevAI/Bull-Board/main/infra/dep
 ```bash
 bb server            # 启动服务（systemd 下由 bb.service 调用）
 bb status            # 服务状态与 Panel 地址
-bb logs [console|runner] [-f] [--lines N]
-bb restart [console|runner|all]
+bb logs [console] [-f] [--lines N]
+bb restart [console|all]
 bb doctor
 bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls disable | bb tls status
 ```
@@ -104,13 +104,13 @@ bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls 
 
 ## 部署与目录
 
-- **local**：systemd 服务 `bb.service`（单端口 8888：面板 + API + SSE）与 `bb-person.service`（Person 执行器）。
+- **local**：systemd 服务 `bb.service`（单端口 8888：面板 + API + SSE）。
 - **目录**：`/opt/bull-board/` 下 `current`、`versions/<version>`、`config/`、`data/`（持久化）。
 - 详细说明见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 ## 开发
 
-- **Go**：`go build -o bb ./cmd/bb`、`go build -o bb-person ./cmd/bb-person`；`go test ./...`
+- **Go**：`go build -o bb ./cmd/bb`；`go test ./...`
 - **前端（仅构建静态产物）**：`pnpm install && pnpm build:dashboard`，产出供 bb server 托管。
 - 本地起服务：`./bb server --prefix /tmp/bb-test`，访问 http://localhost:8888
 
@@ -124,11 +124,7 @@ bb tls enable --self-signed | bb tls enable --cert <path> --key <path> | bb tls 
    ```bash
    ~/go/bin/air
    ```
-2. **bb-person**（Person 执行器，与 console 通信，需与 server 使用相同数据目录）  
-   ```bash
-   ~/go/bin/air -c .air.person.toml
-   ```
-3. **前端**（Vite 开发服务器，端口 5173）  
+2. **前端**（Vite 开发服务器，端口 5173）  
    ```bash
    cd apps/dashboard && pnpm dev
    ```
