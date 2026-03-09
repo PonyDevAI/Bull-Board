@@ -8,7 +8,6 @@ set -e
 PREFIX="${BB_PREFIX:-/opt/bull-board}"
 PORT="${BB_PORT:-8888}"
 SVC_CONSOLE="bb"
-SVC_PERSON="bb-person"
 
 usage() {
   echo "bb - Bull Board 管理命令"
@@ -16,12 +15,12 @@ usage() {
   echo "用法: bb <command> [options]"
   echo ""
   echo "命令:"
-  echo "  install [all|console|person]  安装（默认 all）"
-  echo "  upgrade [all|console|person]  升级"
-  echo "  uninstall [all|console|person] 卸载（默认保留 data，可用 --purge-data）"
+  echo "  install [all|console]  安装（默认 all）"
+  echo "  upgrade [all|console]  升级"
+  echo "  uninstall [all|console] 卸载（默认保留 data，可用 --purge-data）"
   echo "  status                        服务状态"
-  echo "  logs [console|person] [-f] [--lines N]  查看日志"
-  echo "  restart [console|person|all]  重启服务"
+  echo "  logs [console] [-f] [--lines N]  查看日志"
+  echo "  restart [console|all]  重启服务"
   echo "  doctor                        环境检查"
   echo "  tls enable --self-signed      启用 TLS（自签证书）"
   echo "  tls enable --cert <path> --key <path>  启用 TLS（自定义证书）"
@@ -69,8 +68,7 @@ cmd_doctor() {
   if [ "$(uname -s)" = "Linux" ]; then
     echo "systemd: $(systemctl --version 2>/dev/null | head -1 || echo '不可用')"
     systemctl is-active "$SVC_CONSOLE" 2>/dev/null && echo "bb.service: active" || echo "bb.service: inactive/未安装"
-    systemctl is-active "$SVC_PERSON" 2>/dev/null && echo "bb-person.service: active" || echo "bb-person.service: inactive/未安装"
-  fi
+      fi
   if curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/api/health" 2>/dev/null | grep -q 200; then
     echo "API ($PORT): OK"
   else
@@ -91,7 +89,7 @@ cmd_status() {
   echo ""
   if [ "$(uname -s)" = "Linux" ]; then
     echo "Services:"
-    for s in $SVC_CONSOLE $SVC_PERSON; do
+    for s in $SVC_CONSOLE; do
       local st; st="$(systemctl is-active "$s" 2>/dev/null)" || st="inactive"
       echo "  $s: $st"
     done
@@ -109,7 +107,7 @@ cmd_logs() {
   local lines="100"
   for a in "${BB_ARGS[@]}"; do
     case "$a" in
-      console|person) which="$a" ;;
+      console) which="$a" ;;
       -f) follow="-f" ;;
       --lines) lines="${BB_ARGS[*]:1}"; shift ;;  # 简化：不解析 --lines N，用默认
     esac
@@ -119,7 +117,6 @@ cmd_logs() {
     exit 1
   fi
   local unit="$SVC_CONSOLE"
-  [ "$which" = "person" ] && unit="$SVC_PERSON"
   journalctl -u "$unit" ${follow} -n "$lines" --no-pager
 }
 
@@ -131,16 +128,13 @@ cmd_restart() {
     exit 1
   fi
   if [ "$which" = "all" ]; then
-    systemctl restart "$SVC_CONSOLE" "$SVC_PERSON" 2>/dev/null || true
-    echo "已重启 bb + bb-person"
+    systemctl restart "$SVC_CONSOLE" 2>/dev/null || true
+    echo "已重启 bb"
   elif [ "$which" = "console" ]; then
     systemctl restart "$SVC_CONSOLE"
     echo "已重启 bb"
-  elif [ "$which" = "person" ]; then
-    systemctl restart "$SVC_PERSON"
-    echo "已重启 bb-person"
   else
-    echo "用法: bb restart [console|person|all]"
+    echo "用法: bb restart [console|all]"
     exit 1
   fi
 }

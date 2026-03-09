@@ -88,23 +88,18 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if path == "" {
 		path = "/"
 	}
-	// API 子路径在 apiRouter 中已处理，这里只处理 workspaces/tasks/person 和静态
+	// API 子路径在 apiRouter 中已处理，这里处理 2.0 控制面 API 与静态资源
 	if strings.HasPrefix(path, "/api/workspaces") {
 		s.apiWorkspaces(w, r)
 		return
 	}
 	if strings.HasPrefix(path, "/api/tasks") {
 		s.apiTasks(w, r)
-		return
-	}
-	if strings.HasPrefix(path, "/api/person/") {
-		s.personRoutes(w, r)
 		return
 	}
 	if strings.HasPrefix(path, "/api") {
@@ -130,17 +125,6 @@ func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-// personRoutes 分发 /api/person/*
-func (s *Server) personRoutes(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	switch {
-	case strings.HasPrefix(path, "/api/person/pull"):
-		s.personPull(w, r)
-	default:
-		http.NotFound(w, r)
-	}
-}
-
 // apiRouter 处理所有 /api/* 请求：鉴权 + 路由
 func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
@@ -155,15 +139,6 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 	}
 	if path == "/api/auth/logout" && r.Method == http.MethodPost {
 		s.authLogout(w, r)
-		return
-	}
-	// Person 注册/心跳（无需 session，可用 API key）
-	if path == "/api/persons/register" && r.Method == http.MethodPost {
-		s.apiPersonsRegister(w, r)
-		return
-	}
-	if path == "/api/persons/heartbeat" && r.Method == http.MethodPost {
-		s.apiPersonsHeartbeat(w, r)
 		return
 	}
 	// SSE 仅 session
@@ -240,7 +215,7 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.systemUpgradePlan(w, r)
 		return
 	}
-	// /api/jobs/:id/report（Person 上报，需 API key 或 session）
+	// /api/jobs/:id/report（执行结果上报）
 	if strings.HasPrefix(path, "/api/jobs/") && strings.HasSuffix(path, "/report") && r.Method == http.MethodPost {
 		if !s.authRequired(w, r) {
 			return
@@ -248,19 +223,15 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		s.jobReport(w, r)
 		return
 	}
-	// /api/persons（GET）、/api/workers 需鉴权
-	if strings.HasPrefix(path, "/api/persons") || strings.HasPrefix(path, "/api/workers") {
+	// /api/workers 需鉴权
+	if strings.HasPrefix(path, "/api/workers") {
 		if !s.authRequired(w, r) {
-			return
-		}
-		if strings.HasPrefix(path, "/api/persons") {
-			s.apiPersonsRoutes(w, r)
 			return
 		}
 		s.apiWorkersRoutes(w, r)
 		return
 	}
-	// workspaces, tasks, person 等需鉴权后交给 staticOrSPA 内部分发
+	// workspaces/tasks 等需鉴权后交给 staticOrSPA 内部分发
 	if strings.HasPrefix(path, "/api/") {
 		if !s.authRequired(w, r) {
 			return

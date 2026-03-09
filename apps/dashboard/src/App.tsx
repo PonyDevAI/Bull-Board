@@ -199,7 +199,7 @@ export default function App() {
           <Route path="tasks" element={<div className="text-muted-foreground p-4">Tasks 占位</div>} />
           <Route path="backlog" element={<div className="text-muted-foreground p-4">Backlog 占位</div>} />
           <Route path="runs" element={<div className="text-muted-foreground p-4">Runs 占位</div>} />
-          <Route path="persons" element={<div className="text-muted-foreground p-4">执行器 (Persons) 占位</div>} />
+          <Route path="execution-backends" element={<div className="text-muted-foreground p-4">Execution Backends 占位</div>} />
           <Route path="workers" element={<WorkersPage />} />
           <Route path="workspaces" element={<div className="text-muted-foreground p-4">Workspaces 占位</div>} />
           <Route path="artifacts" element={<div className="text-muted-foreground p-4">Artifacts 占位</div>} />

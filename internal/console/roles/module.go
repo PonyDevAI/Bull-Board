@@ -1,0 +1,3 @@
+package roles
+
+// Module placeholder for Bull-Board 2.0 roles domain.
