@@ -40,7 +40,14 @@ func initSchema(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL);
 		CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, name TEXT NOT NULL, key_hash TEXT NOT NULL, key_prefix TEXT NOT NULL, created_at TEXT NOT NULL, last_used_at TEXT, revoked_at TEXT);
-		CREATE TABLE IF NOT EXISTS tasks (
+		CREATE TABLE IF NOT EXISTS workspace_runtime_configs (
+			workspace_id TEXT PRIMARY KEY,
+			repo_path TEXT NOT NULL,
+			default_branch TEXT NOT NULL DEFAULT 'main',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS legacy_tasks (
 			id TEXT PRIMARY KEY,
 			workspace_id TEXT NOT NULL,
 			title TEXT NOT NULL,
@@ -52,7 +59,7 @@ func initSchema(db *sql.DB) error {
 			created_at TEXT NOT NULL,
 			updated_at TEXT NOT NULL
 		);
-		CREATE TABLE IF NOT EXISTS runs (
+		CREATE TABLE IF NOT EXISTS legacy_runs (
 			id TEXT PRIMARY KEY,
 			task_id TEXT NOT NULL,
 			mode TEXT NOT NULL DEFAULT 'CODE_CHANGE',
@@ -66,7 +73,7 @@ func initSchema(db *sql.DB) error {
 			created_at TEXT NOT NULL,
 			updated_at TEXT NOT NULL
 		);
-		CREATE TABLE IF NOT EXISTS artifacts (
+		CREATE TABLE IF NOT EXISTS legacy_artifacts (
 			id TEXT PRIMARY KEY,
 			run_id TEXT NOT NULL,
 			type TEXT NOT NULL,
@@ -74,7 +81,7 @@ func initSchema(db *sql.DB) error {
 			meta TEXT,
 			created_at TEXT NOT NULL
 		);
-		CREATE TABLE IF NOT EXISTS messages (
+		CREATE TABLE IF NOT EXISTS legacy_messages (
 			id TEXT PRIMARY KEY,
 			task_id TEXT NOT NULL,
 			round_type TEXT NOT NULL,
@@ -83,7 +90,7 @@ func initSchema(db *sql.DB) error {
 			content TEXT NOT NULL,
 			created_at TEXT NOT NULL
 		);
-		CREATE TABLE IF NOT EXISTS jobs (
+		CREATE TABLE IF NOT EXISTS legacy_jobs (
 			id TEXT PRIMARY KEY,
 			run_id TEXT NOT NULL,
 			task_id TEXT NOT NULL,
@@ -106,23 +113,23 @@ func initSchema(db *sql.DB) error {
 	}
 
 	for _, q := range []string{
-		"ALTER TABLE runs ADD COLUMN mode TEXT DEFAULT 'CODE_CHANGE'",
-		"ALTER TABLE runs ADD COLUMN worktree_path TEXT",
-		"ALTER TABLE runs ADD COLUMN branch_name TEXT",
-		"ALTER TABLE runs ADD COLUMN error_kind TEXT DEFAULT 'none'",
-		"ALTER TABLE runs ADD COLUMN error_message TEXT",
-		"ALTER TABLE runs ADD COLUMN started_at TEXT",
-		"ALTER TABLE runs ADD COLUMN finished_at TEXT",
-		"ALTER TABLE runs ADD COLUMN updated_at TEXT",
-		"ALTER TABLE jobs ADD COLUMN mode TEXT DEFAULT 'CODE_CHANGE'",
-		"ALTER TABLE jobs ADD COLUMN payload_json TEXT DEFAULT '{}'",
-		"ALTER TABLE jobs ADD COLUMN priority INTEGER DEFAULT 0",
-		"ALTER TABLE jobs ADD COLUMN available_at TEXT DEFAULT ''",
-		"ALTER TABLE jobs ADD COLUMN attempts INTEGER DEFAULT 0",
-		"ALTER TABLE jobs ADD COLUMN max_attempts INTEGER DEFAULT 3",
-		"ALTER TABLE jobs ADD COLUMN last_error TEXT",
-		"ALTER TABLE jobs ADD COLUMN assigned_worker_id TEXT",
-		"ALTER TABLE tasks ADD COLUMN workflow_template_id TEXT",
+		"ALTER TABLE legacy_runs ADD COLUMN mode TEXT DEFAULT 'CODE_CHANGE'",
+		"ALTER TABLE legacy_runs ADD COLUMN worktree_path TEXT",
+		"ALTER TABLE legacy_runs ADD COLUMN branch_name TEXT",
+		"ALTER TABLE legacy_runs ADD COLUMN error_kind TEXT DEFAULT 'none'",
+		"ALTER TABLE legacy_runs ADD COLUMN error_message TEXT",
+		"ALTER TABLE legacy_runs ADD COLUMN started_at TEXT",
+		"ALTER TABLE legacy_runs ADD COLUMN finished_at TEXT",
+		"ALTER TABLE legacy_runs ADD COLUMN updated_at TEXT",
+		"ALTER TABLE legacy_jobs ADD COLUMN mode TEXT DEFAULT 'CODE_CHANGE'",
+		"ALTER TABLE legacy_jobs ADD COLUMN payload_json TEXT DEFAULT '{}'",
+		"ALTER TABLE legacy_jobs ADD COLUMN priority INTEGER DEFAULT 0",
+		"ALTER TABLE legacy_jobs ADD COLUMN available_at TEXT DEFAULT ''",
+		"ALTER TABLE legacy_jobs ADD COLUMN attempts INTEGER DEFAULT 0",
+		"ALTER TABLE legacy_jobs ADD COLUMN max_attempts INTEGER DEFAULT 3",
+		"ALTER TABLE legacy_jobs ADD COLUMN last_error TEXT",
+		"ALTER TABLE legacy_jobs ADD COLUMN assigned_worker_id TEXT",
+		"ALTER TABLE legacy_tasks ADD COLUMN workflow_template_id TEXT",
 	} {
 		_, _ = db.Exec(q)
 	}
@@ -169,28 +176,35 @@ func initSchemaWorkforceV2(db *sql.DB) error {
 }
 
 func seedDefaultWorkforceData(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	seedStatements := []struct {
 		name string
 		sql  string
 		args []any
 	}{
-		{name: "default home", sql: `INSERT OR IGNORE INTO homes (id,name) VALUES ('default','Default Home')`},
-		{name: "default workspace", sql: `INSERT OR IGNORE INTO workspaces (id,home_id,name) VALUES ('default-workspace','default','Default Workspace')`},
-		{name: "default group", sql: `INSERT OR IGNORE INTO groups (id,home_id,workspace_id,name) VALUES ('default-group','default','default-workspace','Default Group')`},
-		{name: "openclaw connector", sql: `INSERT OR IGNORE INTO connectors (id,home_id,code,name,category) VALUES ('openclaw','default','openclaw','OpenClaw','execution_backend')`},
+		{name: "default home", sql: `INSERT INTO homes (id,name) VALUES ('default','Default Home') ON CONFLICT(id) DO UPDATE SET name=excluded.name, updated_at=datetime('now')`},
+		{name: "default workspace", sql: `INSERT INTO workspaces (id,home_id,name) VALUES ('default-workspace','default','Default Workspace') ON CONFLICT(id) DO UPDATE SET home_id=excluded.home_id, name=excluded.name, updated_at=datetime('now')`},
+		{name: "default group", sql: `INSERT INTO groups (id,home_id,workspace_id,name) VALUES ('default-group','default','default-workspace','Default Group') ON CONFLICT(id) DO UPDATE SET home_id=excluded.home_id, workspace_id=excluded.workspace_id, name=excluded.name, updated_at=datetime('now')`},
+		{name: "openclaw connector", sql: `INSERT INTO connectors (id,home_id,code,name,category) VALUES ('openclaw','default','openclaw','OpenClaw','execution_backend') ON CONFLICT(id) DO UPDATE SET home_id=excluded.home_id, code=excluded.code, name=excluded.name, category=excluded.category, updated_at=datetime('now')`},
+		{name: "default workspace runtime config", sql: `INSERT INTO workspace_runtime_configs (workspace_id,repo_path,default_branch,created_at,updated_at) VALUES ('default-workspace','.','main',datetime('now'),datetime('now')) ON CONFLICT(workspace_id) DO UPDATE SET repo_path=excluded.repo_path, default_branch=excluded.default_branch, updated_at=datetime('now')`},
 	}
 	for _, stmt := range seedStatements {
-		if _, err := db.Exec(stmt.sql, stmt.args...); err != nil {
+		if _, err := tx.Exec(stmt.sql, stmt.args...); err != nil {
 			return fmt.Errorf("seed %s: %w", stmt.name, err)
 		}
 	}
 
 	for _, role := range []string{"Planner", "Researcher", "Coder", "Reviewer", "Writer", "Operator"} {
-		if _, err := db.Exec(`INSERT OR IGNORE INTO roles (id,home_id,name,code) VALUES (lower(replace(?,' ', '-')),'default',?,lower(replace(?,' ', '_')))`, role, role, role); err != nil {
+		if _, err := tx.Exec(`INSERT INTO roles (id,home_id,name,code) VALUES (lower(replace(?,' ', '-')),'default',?,lower(replace(?,' ', '_'))) ON CONFLICT(id) DO UPDATE SET home_id=excluded.home_id, name=excluded.name, code=excluded.code, updated_at=datetime('now')`, role, role, role); err != nil {
 			return fmt.Errorf("seed role %s: %w", role, err)
 		}
 	}
-	return nil
+	return tx.Commit()
 }
 
 func validateWorkforceSchema(db *sql.DB) error {
@@ -290,7 +304,7 @@ func tableNameFromCreate(statement string) (string, bool) {
 
 func isWorkforceTable(table string) bool {
 	switch table {
-	case "homes", "workspaces", "groups", "roles", "model_profiles", "connectors", "integration_instances", "execution_backends", "agent_apps", "agent_app_skills", "agent_app_plugins", "workers", "workflow_templates", "workflow_step_templates", "workflow_runs", "step_runs":
+	case "homes", "workspaces", "groups", "roles", "model_profiles", "connectors", "integration_instances", "plugins", "skills", "agent_apps", "agent_app_skills", "agent_app_plugins", "execution_backends", "workers", "workflow_templates", "workflow_step_templates", "boards", "tasks", "workflow_runs", "step_runs", "jobs", "artifacts":
 		return true
 	default:
 		return false

@@ -48,7 +48,7 @@ func (s *Server) apiWorkspaces(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listWorkspaces(w http.ResponseWriter) {
-	rows, err := s.db.Query(`SELECT id, name, repo_path, default_branch, created_at FROM workspaces ORDER BY created_at DESC`)
+	rows, err := s.db.Query(`SELECT w.id, w.name, COALESCE(c.repo_path,''), COALESCE(c.default_branch,'main'), w.created_at FROM workspaces w LEFT JOIN workspace_runtime_configs c ON c.workspace_id = w.id ORDER BY w.created_at DESC`)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
@@ -69,7 +69,7 @@ func (s *Server) listWorkspaces(w http.ResponseWriter) {
 
 func (s *Server) getWorkspace(w http.ResponseWriter, id string) {
 	var name, repoPath, defaultBranch, createdAt string
-	err := s.db.QueryRow(`SELECT name, repo_path, default_branch, created_at FROM workspaces WHERE id = ?`, id).
+	err := s.db.QueryRow(`SELECT w.name, COALESCE(c.repo_path,''), COALESCE(c.default_branch,'main'), w.created_at FROM workspaces w LEFT JOIN workspace_runtime_configs c ON c.workspace_id = w.id WHERE w.id = ?`, id).
 		Scan(&name, &repoPath, &defaultBranch, &createdAt)
 	if err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
@@ -97,9 +97,23 @@ func (s *Server) createWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 	id := common.UUID()
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.Exec(`INSERT INTO workspaces (id, name, repo_path, default_branch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, body.Name, body.RepoPath, body.DefaultBranch, now, now)
+	tx, err := s.db.Begin()
 	if err != nil {
+		writeJSONError(w, "db", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO workspaces (id, home_id, name, created_at, updated_at) VALUES (?, 'default', ?, ?, ?)`,
+		id, body.Name, now, now); err != nil {
+		writeJSONError(w, "db", http.StatusInternalServerError)
+		return
+	}
+	if _, err := tx.Exec(`INSERT INTO workspace_runtime_configs (workspace_id, repo_path, default_branch, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		id, body.RepoPath, body.DefaultBranch, now, now); err != nil {
+		writeJSONError(w, "db", http.StatusInternalServerError)
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
 	}
@@ -200,7 +214,7 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	workspaceID := q.Get("workspace_id")
 	status := q.Get("status")
 	sqlStr := `SELECT t.id, t.workspace_id, t.title, t.description, t.status, t.plan_round, t.fix_round, t.submit_state, t.created_at, t.updated_at, w.name as workspace_name
-		FROM tasks t LEFT JOIN workspaces w ON t.workspace_id = w.id WHERE 1=1`
+		FROM legacy_tasks t LEFT JOIN workspaces w ON t.workspace_id = w.id WHERE 1=1`
 	args := []any{}
 	if workspaceID != "" {
 		sqlStr += ` AND t.workspace_id = ?`
@@ -247,7 +261,7 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 	var workspaceId, title, desc, status, submitState, createdAt, updatedAt string
 	var workflowTemplateID sql.NullString
 	var planRound, fixRound int
-	err := s.db.QueryRow(`SELECT workspace_id, title, description, status, plan_round, fix_round, submit_state, created_at, updated_at, workflow_template_id FROM tasks WHERE id = ?`, id).
+	err := s.db.QueryRow(`SELECT workspace_id, title, description, status, plan_round, fix_round, submit_state, created_at, updated_at, workflow_template_id FROM legacy_tasks WHERE id = ?`, id).
 		Scan(&workspaceId, &title, &desc, &status, &planRound, &fixRound, &submitState, &createdAt, &updatedAt, &workflowTemplateID)
 	if err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
@@ -265,11 +279,11 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 		task["workflowTemplateId"] = workflowTemplateID.String
 	}
 	var wsName, wsRepo, wsBranch string
-	if err := s.db.QueryRow(`SELECT name, repo_path, default_branch FROM workspaces WHERE id = ?`, workspaceId).
+	if err := s.db.QueryRow(`SELECT w.name, COALESCE(c.repo_path,''), COALESCE(c.default_branch,'main') FROM workspaces w LEFT JOIN workspace_runtime_configs c ON c.workspace_id = w.id WHERE w.id = ?`, workspaceId).
 		Scan(&wsName, &wsRepo, &wsBranch); err == nil {
 		task["workspace"] = map[string]any{"id": workspaceId, "name": wsName, "repoPath": wsRepo, "defaultBranch": wsBranch}
 	}
-	runs, err := s.db.Query(`SELECT id, task_id, mode, status, error_kind, error_message, started_at, finished_at FROM runs WHERE task_id = ? ORDER BY started_at DESC`, id)
+	runs, err := s.db.Query(`SELECT id, task_id, mode, status, error_kind, error_message, started_at, finished_at FROM legacy_runs WHERE task_id = ? ORDER BY started_at DESC`, id)
 	runList := []map[string]any{}
 	if err == nil && runs != nil {
 		defer runs.Close()
@@ -290,12 +304,12 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 				m["finishedAt"] = finished.String
 			}
 			var awID string
-			s.db.QueryRow(`SELECT assigned_worker_id FROM jobs WHERE run_id = ? LIMIT 1`, rid.String).Scan(&awID)
+			s.db.QueryRow(`SELECT assigned_worker_id FROM legacy_jobs WHERE run_id = ? LIMIT 1`, rid.String).Scan(&awID)
 			if awID != "" {
 				m["assignedWorkerId"] = awID
 			}
 			var artList []map[string]any
-			arts, _ := s.db.Query(`SELECT id, run_id, type, uri, created_at FROM artifacts WHERE run_id = ?`, rid.String)
+			arts, _ := s.db.Query(`SELECT id, run_id, type, uri, created_at FROM legacy_artifacts WHERE run_id = ?`, rid.String)
 			if arts != nil {
 				for arts.Next() {
 					var aid, runId, typ, uri, cat string
@@ -309,7 +323,7 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 		}
 	}
 	task["runs"] = runList
-	msgs, err2 := s.db.Query(`SELECT id, task_id, round_type, round_no, author, content, created_at FROM messages WHERE task_id = ? ORDER BY id ASC`, id)
+	msgs, err2 := s.db.Query(`SELECT id, task_id, round_type, round_no, author, content, created_at FROM legacy_messages WHERE task_id = ? ORDER BY id ASC`, id)
 	msgList := []map[string]any{}
 	if err2 == nil && msgs != nil {
 		defer msgs.Close()
@@ -347,7 +361,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	id := common.UUID()
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.Exec(`INSERT INTO tasks (id, workspace_id, title, description, workflow_template_id, created_at, updated_at) VALUES (?, ?, ?, ?, NULLIF(?,''), ?, ?)`,
+	_, err := s.db.Exec(`INSERT INTO legacy_tasks (id, workspace_id, title, description, workflow_template_id, created_at, updated_at) VALUES (?, ?, ?, ?, NULLIF(?,''), ?, ?)`,
 		id, body.WorkspaceId, body.Title, body.Description, body.WorkflowTemplateID, now, now)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
@@ -355,7 +369,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	var status, submitState string
 	var planRound, fixRound int
-	s.db.QueryRow(`SELECT status, plan_round, fix_round, submit_state FROM tasks WHERE id = ?`, id).Scan(&status, &planRound, &fixRound, &submitState)
+	s.db.QueryRow(`SELECT status, plan_round, fix_round, submit_state FROM legacy_tasks WHERE id = ?`, id).Scan(&status, &planRound, &fixRound, &submitState)
 	var workflowRunID string
 	if strings.TrimSpace(body.WorkflowTemplateID) != "" {
 		wf := workflows.NewService(s.db)
@@ -381,7 +395,7 @@ func (s *Server) updateTaskStatus(w http.ResponseWriter, r *http.Request, taskID
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	res, err := s.db.Exec(`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`, body.Status, now, taskID)
+	res, err := s.db.Exec(`UPDATE legacy_tasks SET status = ?, updated_at = ? WHERE id = ?`, body.Status, now, taskID)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
@@ -393,13 +407,13 @@ func (s *Server) updateTaskStatus(w http.ResponseWriter, r *http.Request, taskID
 	}
 	var workspaceId, title, desc, status, submitState, createdAt, updatedAt string
 	var planRound, fixRound int
-	s.db.QueryRow(`SELECT workspace_id, title, description, status, plan_round, fix_round, submit_state, created_at, updated_at FROM tasks WHERE id = ?`, taskID).
+	s.db.QueryRow(`SELECT workspace_id, title, description, status, plan_round, fix_round, submit_state, created_at, updated_at FROM legacy_tasks WHERE id = ?`, taskID).
 		Scan(&workspaceId, &title, &desc, &status, &planRound, &fixRound, &submitState, &createdAt, &updatedAt)
 	writeJSON(w, map[string]any{"id": taskID, "workspaceId": workspaceId, "title": title, "description": desc, "status": status, "planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": createdAt, "updatedAt": updatedAt})
 }
 
 func (s *Server) listMessages(w http.ResponseWriter, taskID string) {
-	rows, err := s.db.Query(`SELECT id, task_id, round_type, round_no, author, content, created_at FROM messages WHERE task_id = ? ORDER BY id ASC`, taskID)
+	rows, err := s.db.Query(`SELECT id, task_id, round_type, round_no, author, content, created_at FROM legacy_messages WHERE task_id = ? ORDER BY id ASC`, taskID)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
@@ -427,13 +441,13 @@ func (s *Server) createMessage(w http.ResponseWriter, r *http.Request, taskID st
 		return
 	}
 	var n int
-	if err := s.db.QueryRow(`SELECT 1 FROM tasks WHERE id = ?`, taskID).Scan(&n); err == sql.ErrNoRows {
+	if err := s.db.QueryRow(`SELECT 1 FROM legacy_tasks WHERE id = ?`, taskID).Scan(&n); err == sql.ErrNoRows {
 		writeJSONError(w, "Task not found", http.StatusNotFound)
 		return
 	}
 	id := common.UUID()
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.Exec(`INSERT INTO messages (id, task_id, round_type, round_no, author, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+	_, err := s.db.Exec(`INSERT INTO legacy_messages (id, task_id, round_type, round_no, author, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		id, taskID, body.RoundType, body.RoundNo, body.Author, body.Content, now)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
@@ -444,7 +458,7 @@ func (s *Server) createMessage(w http.ResponseWriter, r *http.Request, taskID st
 }
 
 func (s *Server) listRuns(w http.ResponseWriter, taskID string) {
-	rows, err := s.db.Query(`SELECT id, task_id, mode, status, worktree_path, branch_name, error_kind, error_message, started_at, finished_at, created_at FROM runs WHERE task_id = ? ORDER BY started_at DESC`, taskID)
+	rows, err := s.db.Query(`SELECT id, task_id, mode, status, worktree_path, branch_name, error_kind, error_message, started_at, finished_at, created_at FROM legacy_runs WHERE task_id = ? ORDER BY started_at DESC`, taskID)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
@@ -478,7 +492,7 @@ func (s *Server) listRuns(w http.ResponseWriter, taskID string) {
 			m["createdAt"] = createdAt.String
 		}
 		var artList []map[string]any
-		arts, _ := s.db.Query(`SELECT id, run_id, type, uri, created_at FROM artifacts WHERE run_id = ?`, id)
+		arts, _ := s.db.Query(`SELECT id, run_id, type, uri, created_at FROM legacy_artifacts WHERE run_id = ?`, id)
 		if arts != nil {
 			for arts.Next() {
 				var aid, runId, typ, uri, cat string
@@ -495,7 +509,7 @@ func (s *Server) listRuns(w http.ResponseWriter, taskID string) {
 
 func (s *Server) enqueueTask(w http.ResponseWriter, r *http.Request, taskID string) {
 	var taskWorkspace string
-	if err := s.db.QueryRow(`SELECT workspace_id FROM tasks WHERE id = ?`, taskID).Scan(&taskWorkspace); err == sql.ErrNoRows {
+	if err := s.db.QueryRow(`SELECT workspace_id FROM legacy_tasks WHERE id = ?`, taskID).Scan(&taskWorkspace); err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
 		return
 	}
@@ -536,15 +550,15 @@ func (s *Server) enqueue(p runEnqueueParams) (runId, jobId string) {
 	if p.AssignedWorkerID == "" {
 		p.AssignedWorkerID = "default"
 	}
-	s.db.Exec(`INSERT INTO runs (id, task_id, mode, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)`, runId, p.TaskID, p.Mode, now, now)
-	s.db.Exec(`INSERT INTO jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, assigned_worker_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
+	s.db.Exec(`INSERT INTO legacy_runs (id, task_id, mode, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)`, runId, p.TaskID, p.Mode, now, now)
+	s.db.Exec(`INSERT INTO legacy_jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, assigned_worker_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
 		jobId, runId, p.TaskID, p.WorkspaceID, p.Mode, string(payloadJSON), now, p.AssignedWorkerID, now, now)
 	return runId, jobId
 }
 
 func (s *Server) actionSubmit(w http.ResponseWriter, taskID string) {
 	var taskTitle, workspaceId, repoPath, defaultBranch string
-	err := s.db.QueryRow(`SELECT t.title, t.workspace_id, w.repo_path, w.default_branch FROM tasks t JOIN workspaces w ON t.workspace_id = w.id WHERE t.id = ?`, taskID).
+	err := s.db.QueryRow(`SELECT t.title, t.workspace_id, COALESCE(c.repo_path,''), COALESCE(c.default_branch,'main') FROM legacy_tasks t JOIN workspaces w ON t.workspace_id = w.id LEFT JOIN workspace_runtime_configs c ON c.workspace_id = w.id WHERE t.id = ?`, taskID).
 		Scan(&taskTitle, &workspaceId, &repoPath, &defaultBranch)
 	if err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
@@ -554,7 +568,7 @@ func (s *Server) actionSubmit(w http.ResponseWriter, taskID string) {
 		defaultBranch = "main"
 	}
 	var branch string
-	s.db.QueryRow(`SELECT branch_name FROM runs WHERE task_id = ? ORDER BY created_at DESC LIMIT 1`, taskID).Scan(&branch)
+	s.db.QueryRow(`SELECT branch_name FROM legacy_runs WHERE task_id = ? ORDER BY created_at DESC LIMIT 1`, taskID).Scan(&branch)
 	if branch == "" {
 		branch = "bb/task-" + taskID + "-submit"
 	}
@@ -571,30 +585,30 @@ func (s *Server) actionSubmit(w http.ResponseWriter, taskID string) {
 
 func (s *Server) actionReplan(w http.ResponseWriter, taskID string) {
 	var planRound int
-	if err := s.db.QueryRow(`SELECT plan_round FROM tasks WHERE id = ?`, taskID).Scan(&planRound); err == sql.ErrNoRows {
+	if err := s.db.QueryRow(`SELECT plan_round FROM legacy_tasks WHERE id = ?`, taskID).Scan(&planRound); err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
 		return
 	}
 	newRound := planRound + 1
 	now := time.Now().UTC().Format(time.RFC3339)
-	s.db.Exec(`UPDATE tasks SET status = 'plan', plan_round = ?, updated_at = ? WHERE id = ?`, newRound, now, taskID)
-	s.db.Exec(`INSERT INTO messages (id, task_id, round_type, round_no, author, content, created_at) VALUES (?, ?, 'plan', ?, 'system', ?, ?)`,
+	s.db.Exec(`UPDATE legacy_tasks SET status = 'plan', plan_round = ?, updated_at = ? WHERE id = ?`, newRound, now, taskID)
+	s.db.Exec(`INSERT INTO legacy_messages (id, task_id, round_type, round_no, author, content, created_at) VALUES (?, ?, 'plan', ?, 'system', ?, ?)`,
 		common.UUID(), taskID, newRound, "Re-plan: Round #"+fmt.Sprint(newRound), now)
 	var id, status string
 	var pr int
-	s.db.QueryRow(`SELECT id, status, plan_round FROM tasks WHERE id = ?`, taskID).Scan(&id, &status, &pr)
+	s.db.QueryRow(`SELECT id, status, plan_round FROM legacy_tasks WHERE id = ?`, taskID).Scan(&id, &status, &pr)
 	writeJSON(w, map[string]any{"id": id, "status": status, "planRound": pr})
 }
 
 func (s *Server) actionRetry(w http.ResponseWriter, taskID string) {
 	var taskId, workspaceId string
-	if err := s.db.QueryRow(`SELECT id, workspace_id FROM tasks WHERE id = ?`, taskID).Scan(&taskId, &workspaceId); err == sql.ErrNoRows {
+	if err := s.db.QueryRow(`SELECT id, workspace_id FROM legacy_tasks WHERE id = ?`, taskID).Scan(&taskId, &workspaceId); err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
 		return
 	}
 	var payloadJSON string
 	var mode string
-	err := s.db.QueryRow(`SELECT j.payload_json, j.mode FROM jobs j JOIN runs r ON j.run_id = r.id WHERE r.task_id = ? ORDER BY j.created_at DESC LIMIT 1`, taskID).Scan(&payloadJSON, &mode)
+	err := s.db.QueryRow(`SELECT j.payload_json, j.mode FROM legacy_jobs j JOIN legacy_runs r ON j.run_id = r.id WHERE r.task_id = ? ORDER BY j.created_at DESC LIMIT 1`, taskID).Scan(&payloadJSON, &mode)
 	if err == sql.ErrNoRows {
 		writeJSONError(w, "no run to retry", http.StatusBadRequest)
 		return
@@ -609,14 +623,14 @@ func (s *Server) actionRetry(w http.ResponseWriter, taskID string) {
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	jobId := common.UUID()
-	s.db.Exec(`INSERT INTO runs (id, task_id, mode, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)`, runId, taskID, mode, now, now)
+	s.db.Exec(`INSERT INTO legacy_runs (id, task_id, mode, status, created_at, updated_at) VALUES (?, ?, ?, 'queued', ?, ?)`, runId, taskID, mode, now, now)
 	pj, _ := json.Marshal(payload)
 	var assignedWorkerID string
-	s.db.QueryRow(`SELECT assigned_worker_id FROM jobs j JOIN runs r ON j.run_id = r.id WHERE r.task_id = ? ORDER BY j.created_at DESC LIMIT 1`, taskID).Scan(&assignedWorkerID)
+	s.db.QueryRow(`SELECT assigned_worker_id FROM legacy_jobs j JOIN legacy_runs r ON j.run_id = r.id WHERE r.task_id = ? ORDER BY j.created_at DESC LIMIT 1`, taskID).Scan(&assignedWorkerID)
 	if assignedWorkerID == "" {
 		assignedWorkerID = "default"
 	}
-	s.db.Exec(`INSERT INTO jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, assigned_worker_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
+	s.db.Exec(`INSERT INTO legacy_jobs (id, run_id, task_id, workspace_id, mode, payload_json, status, available_at, assigned_worker_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
 		jobId, runId, taskID, workspaceId, mode, string(pj), now, assignedWorkerID, now, now)
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"runId": runId, "jobId": jobId})
@@ -624,18 +638,18 @@ func (s *Server) actionRetry(w http.ResponseWriter, taskID string) {
 
 func (s *Server) actionContinueFix(w http.ResponseWriter, taskID string) {
 	var fixRound int
-	if err := s.db.QueryRow(`SELECT fix_round FROM tasks WHERE id = ?`, taskID).Scan(&fixRound); err == sql.ErrNoRows {
+	if err := s.db.QueryRow(`SELECT fix_round FROM legacy_tasks WHERE id = ?`, taskID).Scan(&fixRound); err == sql.ErrNoRows {
 		writeJSONError(w, "Not found", http.StatusNotFound)
 		return
 	}
 	newFix := fixRound + 1
 	now := time.Now().UTC().Format(time.RFC3339)
-	s.db.Exec(`UPDATE tasks SET status = 'in_progress', fix_round = ?, updated_at = ? WHERE id = ?`, newFix, now, taskID)
-	s.db.Exec(`INSERT INTO messages (id, task_id, round_type, round_no, author, content, created_at) VALUES (?, ?, 'fix', ?, 'system', ?, ?)`,
+	s.db.Exec(`UPDATE legacy_tasks SET status = 'in_progress', fix_round = ?, updated_at = ? WHERE id = ?`, newFix, now, taskID)
+	s.db.Exec(`INSERT INTO legacy_messages (id, task_id, round_type, round_no, author, content, created_at) VALUES (?, ?, 'fix', ?, 'system', ?, ?)`,
 		common.UUID(), taskID, newFix, "Continue Fix: Round #"+fmt.Sprint(newFix), now)
 	var id, status string
 	var f int
-	s.db.QueryRow(`SELECT id, status, fix_round FROM tasks WHERE id = ?`, taskID).Scan(&id, &status, &f)
+	s.db.QueryRow(`SELECT id, status, fix_round FROM legacy_tasks WHERE id = ?`, taskID).Scan(&id, &status, &f)
 	writeJSON(w, map[string]any{"id": id, "status": status, "fixRound": f})
 }
 
