@@ -122,6 +122,7 @@ func initSchema(db *sql.DB) error {
 		"ALTER TABLE jobs ADD COLUMN max_attempts INTEGER DEFAULT 3",
 		"ALTER TABLE jobs ADD COLUMN last_error TEXT",
 		"ALTER TABLE jobs ADD COLUMN assigned_worker_id TEXT",
+		"ALTER TABLE tasks ADD COLUMN workflow_template_id TEXT",
 	} {
 		_, _ = db.Exec(q)
 	}
@@ -194,15 +195,19 @@ func seedDefaultWorkforceData(db *sql.DB) error {
 
 func validateWorkforceSchema(db *sql.DB) error {
 	required := map[string][]string{
-		"homes":                 {"id", "name"},
-		"workspaces":            {"id", "home_id", "name"},
-		"groups":                {"id", "home_id", "workspace_id", "name"},
-		"roles":                 {"id", "home_id", "name", "code"},
-		"model_profiles":        {"id", "home_id", "name"},
-		"integration_instances": {"id", "home_id", "connector_code"},
-		"agent_apps":            {"id", "home_id", "name"},
-		"execution_backends":    {"id", "home_id", "connector_code"},
-		"workers":               {"id", "role_id", "agent_app_id", "execution_backend_id"},
+		"homes":                   {"id", "name"},
+		"workspaces":              {"id", "home_id", "name"},
+		"groups":                  {"id", "home_id", "workspace_id", "name"},
+		"roles":                   {"id", "home_id", "name", "code"},
+		"model_profiles":          {"id", "home_id", "name"},
+		"integration_instances":   {"id", "home_id", "connector_code"},
+		"agent_apps":              {"id", "home_id", "name"},
+		"execution_backends":      {"id", "home_id", "connector_code"},
+		"workers":                 {"id", "role_id", "agent_app_id", "execution_backend_id"},
+		"workflow_templates":      {"id", "workspace_id", "name", "config_json"},
+		"workflow_step_templates": {"id", "workflow_template_id", "step_type", "step_order"},
+		"workflow_runs":           {"id", "workspace_id", "workflow_template_id", "status"},
+		"step_runs":               {"id", "workflow_run_id", "status"},
 	}
 	for table, columns := range required {
 		if err := ensureTableColumns(db, table, columns); err != nil {
@@ -285,7 +290,7 @@ func tableNameFromCreate(statement string) (string, bool) {
 
 func isWorkforceTable(table string) bool {
 	switch table {
-	case "homes", "workspaces", "groups", "roles", "model_profiles", "connectors", "integration_instances", "execution_backends", "agent_apps", "agent_app_skills", "agent_app_plugins", "workers":
+	case "homes", "workspaces", "groups", "roles", "model_profiles", "connectors", "integration_instances", "execution_backends", "agent_apps", "agent_app_skills", "agent_app_plugins", "workers", "workflow_templates", "workflow_step_templates", "workflow_runs", "step_runs":
 		return true
 	default:
 		return false

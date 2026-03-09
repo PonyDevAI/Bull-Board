@@ -188,12 +188,14 @@ CREATE TABLE workflow_templates (
 CREATE TABLE workflow_step_templates (
   id TEXT PRIMARY KEY,
   workflow_template_id TEXT NOT NULL,
+  role_id TEXT,
   name TEXT NOT NULL,
   step_type TEXT NOT NULL,
   step_order INTEGER NOT NULL,
   config_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id) ON DELETE CASCADE
+  FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id) ON DELETE CASCADE,
+  FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL
 );
 
 CREATE TABLE boards (
@@ -210,13 +212,15 @@ CREATE TABLE tasks (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL,
   board_id TEXT,
+  workflow_template_id TEXT,
   title TEXT NOT NULL,
   description TEXT,
   status TEXT NOT NULL DEFAULT 'todo',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
-  FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE SET NULL
+  FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE SET NULL,
+  FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id) ON DELETE SET NULL
 );
 
 CREATE TABLE workflow_runs (
@@ -237,7 +241,7 @@ CREATE TABLE workflow_runs (
 CREATE TABLE step_runs (
   id TEXT PRIMARY KEY,
   workflow_run_id TEXT NOT NULL,
-  workflow_step_template_id TEXT,
+  workflow_step_template_id TEXT NOT NULL,
   worker_id TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
   input_json TEXT NOT NULL DEFAULT '{}',
@@ -281,6 +285,13 @@ CREATE INDEX idx_workspaces_home_id ON workspaces(home_id);
 CREATE INDEX idx_groups_workspace_id ON groups(workspace_id);
 CREATE INDEX idx_workers_workspace_id ON workers(workspace_id);
 CREATE INDEX idx_tasks_workspace_id ON tasks(workspace_id);
+CREATE INDEX idx_workflow_templates_workspace_id ON workflow_templates(workspace_id);
+CREATE INDEX idx_workflow_step_templates_template_id ON workflow_step_templates(workflow_template_id);
+CREATE UNIQUE INDEX idx_workflow_step_templates_order ON workflow_step_templates(workflow_template_id, step_order);
+CREATE INDEX idx_workflow_runs_template_id ON workflow_runs(workflow_template_id);
+CREATE INDEX idx_workflow_runs_task_id ON workflow_runs(task_id);
+CREATE INDEX idx_step_runs_worker_id ON step_runs(worker_id);
+CREATE INDEX idx_tasks_workflow_template_id ON tasks(workflow_template_id);
 CREATE INDEX idx_workflow_runs_workspace_id ON workflow_runs(workspace_id);
 CREATE INDEX idx_step_runs_workflow_run_id ON step_runs(workflow_run_id);
 CREATE INDEX idx_jobs_step_run_id ON jobs(step_run_id);

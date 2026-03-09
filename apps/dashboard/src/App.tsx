@@ -16,6 +16,7 @@ import { IntegrationsPage } from "@/pages/IntegrationsPage";
 import { AgentAppsPage } from "@/pages/AgentAppsPage";
 import { ExecutionBackendsPage } from "@/pages/ExecutionBackendsPage";
 import { WorkersV2Page } from "@/pages/WorkersV2Page";
+import { WorkflowTemplatesPage } from "@/pages/WorkflowTemplatesPage";
 
 function Home() {
   return (
@@ -206,6 +207,7 @@ export default function App() {
           <Route path="runs" element={<div className="text-muted-foreground p-4">Runs 占位</div>} />
           <Route path="execution-backends" element={<ExecutionBackendsPage />} />
           <Route path="workers" element={<WorkersV2Page />} />
+          <Route path="workflow-templates" element={<WorkflowTemplatesPage />} />
           <Route path="workspaces" element={<div className="text-muted-foreground p-4">Workspaces 占位</div>} />
           <Route path="artifacts" element={<div className="text-muted-foreground p-4">Artifacts 占位</div>} />
           <Route path="models" element={<ModelProfilesPage />} />

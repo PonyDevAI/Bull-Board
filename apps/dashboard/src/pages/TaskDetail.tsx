@@ -58,6 +58,29 @@ export function TaskDetail() {
         <span className="rounded bg-slate-200 px-2 py-1 text-sm w-fit dark:bg-slate-600 dark:text-slate-200">{task.status}</span>
       </div>
 
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Workflow</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {!task.workflowRun ? (
+            <p className="text-slate-500 dark:text-slate-400">未绑定 Workflow</p>
+          ) : (
+            <>
+              <p className="text-sm">Run: <span className="font-medium">{task.workflowRun.id}</span> · {task.workflowRun.status}</p>
+              {(task.stepRuns ?? []).map((sr) => (
+                <div key={sr.id} className="rounded border p-2 text-sm dark:border-slate-600">
+                  <div>#{sr.step_order ?? "-"} {sr.name ?? sr.id}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">status={sr.status} · worker={sr.worker_id || "unassigned"}</div>
+                </div>
+              ))}
+              {task.currentStep && <p className="text-xs text-blue-600 dark:text-blue-400">Current step: {task.currentStep.name ?? task.currentStep.id}</p>}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">状态</CardTitle>

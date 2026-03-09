@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { getTasks, createTask, getWorkspaces, type Task, type Workspace } from "@/api";
+import { getTasks, createTask, getWorkspaces, getWorkflowTemplates, type Task, type Workspace, type WorkflowTemplate } from "@/api";
 import { useSSE } from "@/useSSE";
 
 const COLUMNS = [
@@ -20,6 +20,8 @@ export function Board() {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskWs, setNewTaskWs] = useState("");
+  const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplate[]>([]);
+  const [newTaskWorkflowTemplateId, setNewTaskWorkflowTemplateId] = useState("");
 
   const load = () => {
     const q: { workspace_id?: string } = {};
@@ -38,6 +40,9 @@ export function Board() {
     getWorkspaces()
       .then((data) => setWorkspaces(Array.isArray(data) ? data : []))
       .catch(() => setWorkspaces([]));
+    getWorkflowTemplates()
+      .then((d) => setWorkflowTemplates(Array.isArray(d.items) ? d.items : []))
+      .catch(() => setWorkflowTemplates([]));
   }, []);
 
   useSSE(() => load(), () => load());
@@ -45,10 +50,11 @@ export function Board() {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskWs || !newTaskTitle.trim()) return;
-    await createTask({ workspaceId: newTaskWs, title: newTaskTitle.trim() });
+    await createTask({ workspaceId: newTaskWs, title: newTaskTitle.trim(), workflowTemplateId: newTaskWorkflowTemplateId || undefined });
     setNewTaskOpen(false);
     setNewTaskTitle("");
     setNewTaskWs(workspaceId || "");
+    setNewTaskWorkflowTemplateId("");
     load();
   };
 
@@ -121,6 +127,17 @@ export function Board() {
               placeholder="Task 标题"
               required
             />
+            <select
+              className="w-full min-h-[44px] rounded border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-500"
+              value={newTaskWorkflowTemplateId}
+              onChange={(e) => setNewTaskWorkflowTemplateId(e.target.value)}
+            >
+              <option value="">不绑定 Workflow Template</option>
+              {(workflowTemplates ?? []).filter((t) => !newTaskWs || t.workspace_id === newTaskWs).map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+
             <div className="flex gap-2">
               <Button type="submit" size="sm" className="min-h-[44px] min-w-[44px]">创建</Button>
               <Button type="button" variant="outline" size="sm" className="min-h-[44px] min-w-[44px]" onClick={() => setNewTaskOpen(false)}>取消</Button>
