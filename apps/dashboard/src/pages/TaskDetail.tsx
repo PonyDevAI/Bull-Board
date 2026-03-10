@@ -14,6 +14,8 @@ import {
   completeStepRun,
   failStepRun,
   getStepRunDispatchPreview,
+  dispatchStepRun,
+  type StepRunDispatchResult,
   type TaskDetail,
 } from "@/api";
 import { useSSE } from "@/useSSE";
@@ -26,6 +28,7 @@ export function TaskDetail() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"messages" | "runs" | "artifacts">("messages");
   const [dispatchPreview, setDispatchPreview] = useState<Record<string, unknown> | null>(null);
+  const [dispatchResult, setDispatchResult] = useState<StepRunDispatchResult | null>(null);
   const [workflowErr, setWorkflowErr] = useState<string>("");
 
   const load = () => {
@@ -80,6 +83,18 @@ export function TaskDetail() {
     }
   };
 
+  const dispatchCurrentStep = async () => {
+    if (!currentStep?.id) return;
+    setWorkflowErr("");
+    try {
+      const data = await dispatchStepRun(currentStep.id);
+      setDispatchResult(data.item);
+      load();
+    } catch (e) {
+      setWorkflowErr(e instanceof Error ? e.message : "dispatch failed");
+    }
+  };
+
   if (!id) return null;
   if (loading || !task) {
     return <p className="p-4 text-slate-500 dark:text-slate-400">加载中…</p>;
@@ -126,12 +141,25 @@ export function TaskDetail() {
                 <Button size="sm" variant="outline" onClick={completeCurrentStep} disabled={!currentStep || currentStep.status !== "running"}>Complete Step</Button>
                 <Button size="sm" variant="outline" onClick={failCurrentStep} disabled={!currentStep || (currentStep.status !== "ready" && currentStep.status !== "running")}>Fail Step</Button>
                 <Button size="sm" variant="outline" onClick={previewDispatch} disabled={!currentStep}>Preview Dispatch</Button>
+                <Button size="sm" onClick={dispatchCurrentStep} disabled={!currentStep || currentStep.status !== "ready"}>Dispatch Step</Button>
               </div>
               {workflowErr && <p className="text-xs text-red-600 dark:text-red-400">{workflowErr}</p>}
               {dispatchPreview && (
                 <div className="rounded border p-2 dark:border-slate-600">
                   <p className="mb-2 text-sm font-medium">Dispatch Preview</p>
                   <pre className="max-h-80 overflow-auto rounded bg-slate-100 p-2 text-xs dark:bg-slate-900">{JSON.stringify(dispatchPreview, null, 2)}</pre>
+                </div>
+              )}
+              {dispatchResult && (
+                <div className="rounded border p-2 dark:border-slate-600">
+                  <p className="mb-2 text-sm font-medium">Dispatch Execution Result</p>
+                  <div className="space-y-1 text-xs text-slate-700 dark:text-slate-300">
+                    <p>job_id: <span className="font-mono">{dispatchResult.job_id}</span></p>
+                    <p>job_status: {dispatchResult.job_status} · execution_status: {dispatchResult.execution_status}</p>
+                    <p>external_job_ref: <span className="font-mono">{dispatchResult.external_job_ref || "-"}</span></p>
+                    <p>artifacts: {dispatchResult.artifacts?.length ?? 0}</p>
+                  </div>
+                  <pre className="mt-2 max-h-80 overflow-auto rounded bg-slate-100 p-2 text-xs dark:bg-slate-900">{JSON.stringify(dispatchResult, null, 2)}</pre>
                 </div>
               )}
             </>
