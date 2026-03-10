@@ -339,7 +339,7 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 		task["workflowRun"] = wfRun
 		task["stepRuns"] = wfRun.StepRuns
 		for _, sr := range wfRun.StepRuns {
-			if st, _ := sr["status"].(string); st == "ready" || st == "pending_unassigned" {
+			if st, _ := sr["status"].(string); st == "running" || st == "ready" || st == "pending_unassigned" {
 				task["currentStep"] = sr
 				break
 			}

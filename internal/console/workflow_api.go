@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/PonyDevAI/Bull-Board/internal/common"
+	"github.com/PonyDevAI/Bull-Board/internal/console/dispatch"
 	"github.com/PonyDevAI/Bull-Board/internal/console/workflows"
 )
 
@@ -74,6 +75,10 @@ func (s *Server) apiWorkflowRoutes(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"item": state})
 		return
 	}
+	if strings.HasPrefix(path, "/api/step-runs/") {
+		s.handleStepRunActions(w, r)
+		return
+	}
 	if strings.HasPrefix(path, "/api/tasks/") && strings.HasSuffix(path, "/workflow") {
 		if r.Method != http.MethodGet {
 			http.Error(w, "", http.StatusMethodNotAllowed)
@@ -85,6 +90,98 @@ func (s *Server) apiWorkflowRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.NotFound(w, r)
+}
+
+func (s *Server) handleStepRunActions(w http.ResponseWriter, r *http.Request) {
+	rest := strings.TrimPrefix(r.URL.Path, "/api/step-runs/")
+	parts := strings.SplitN(rest, "/", 2)
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" {
+		http.NotFound(w, r)
+		return
+	}
+	stepRunID := parts[0]
+	action := parts[1]
+	wf := workflows.NewService(s.db)
+
+	switch action {
+	case "start":
+		if r.Method != http.MethodPost {
+			http.Error(w, "", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := wf.StartStep(stepRunID); err != nil {
+			s.writeStepActionError(w, err)
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true})
+	case "complete":
+		if r.Method != http.MethodPost {
+			http.Error(w, "", http.StatusMethodNotAllowed)
+			return
+		}
+		var body struct {
+			Output any `json:"output"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSONError(w, "invalid body", http.StatusBadRequest)
+			return
+		}
+		if err := wf.CompleteStep(stepRunID, body.Output); err != nil {
+			s.writeStepActionError(w, err)
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true})
+	case "fail":
+		if r.Method != http.MethodPost {
+			http.Error(w, "", http.StatusMethodNotAllowed)
+			return
+		}
+		var body struct {
+			ErrorInfo any `json:"errorInfo"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSONError(w, "invalid body", http.StatusBadRequest)
+			return
+		}
+		if err := wf.FailStep(stepRunID, body.ErrorInfo); err != nil {
+			s.writeStepActionError(w, err)
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true})
+	case "dispatch-preview":
+		if r.Method != http.MethodGet {
+			http.Error(w, "", http.StatusMethodNotAllowed)
+			return
+		}
+		payload, err := dispatch.PrepareDispatchForStep(s.db, stepRunID)
+		if err == dispatch.ErrStepRunWorkerMissing {
+			writeJSONError(w, "step has no assigned worker", http.StatusConflict)
+			return
+		}
+		if err == sql.ErrNoRows {
+			writeJSONError(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			writeJSONError(w, "dispatch preview failed", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]any{"item": payload})
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (s *Server) writeStepActionError(w http.ResponseWriter, err error) {
+	if err == workflows.ErrStepRunNotFound || err == sql.ErrNoRows {
+		writeJSONError(w, "not found", http.StatusNotFound)
+		return
+	}
+	if strings.Contains(err.Error(), workflows.ErrInvalidStepTransition.Error()) {
+		writeJSONError(w, err.Error(), http.StatusConflict)
+		return
+	}
+	writeJSONError(w, "db", http.StatusInternalServerError)
 }
 
 func (s *Server) handleTemplateSteps(w http.ResponseWriter, r *http.Request, templateID string) {
@@ -163,7 +260,7 @@ func (s *Server) getTaskWorkflow(w http.ResponseWriter, taskID string) {
 	current := map[string]any(nil)
 	for _, sr := range state.StepRuns {
 		st, _ := sr["status"].(string)
-		if st == "ready" || st == "pending_unassigned" {
+		if st == "running" || st == "ready" || st == "pending_unassigned" {
 			current = sr
 			break
 		}
