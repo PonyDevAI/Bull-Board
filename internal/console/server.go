@@ -106,7 +106,7 @@ func (s *Server) staticOrSPA(w http.ResponseWriter, r *http.Request) {
 		s.apiTasks(w, r)
 		return
 	}
-	if strings.HasPrefix(path, "/api/workflow-templates") || strings.HasPrefix(path, "/api/workflow-runs") {
+	if strings.HasPrefix(path, "/api/workflow-templates") || strings.HasPrefix(path, "/api/workflow-runs") || strings.HasPrefix(path, "/api/step-runs") {
 		s.apiWorkflowRoutes(w, r)
 		return
 	}
@@ -237,7 +237,7 @@ func (s *Server) apiRouter(w http.ResponseWriter, r *http.Request) {
 		if !s.authRequired(w, r) {
 			return
 		}
-		if strings.HasPrefix(path, "/api/workflow-templates") || strings.HasPrefix(path, "/api/workflow-runs") || strings.HasSuffix(path, "/workflow") {
+		if strings.HasPrefix(path, "/api/workflow-templates") || strings.HasPrefix(path, "/api/workflow-runs") || strings.HasPrefix(path, "/api/step-runs") || strings.HasSuffix(path, "/workflow") {
 			s.apiWorkflowRoutes(w, r)
 			return
 		}

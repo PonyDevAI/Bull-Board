@@ -49,10 +49,12 @@ export type WorkflowStep = {
   created_at: string;
 };
 
+export type StepRunState = { id: string; name?: string; step_order?: number; status: string; worker_id?: string };
+
 export type TaskWorkflowState = {
   workflow_run?: { id: string; status: string };
-  step_runs?: Array<{ id: string; name?: string; step_order?: number; status: string; worker_id?: string }>;
-  current_step?: { id: string; status: string; name?: string; worker_id?: string };
+  step_runs?: StepRunState[];
+  current_step?: StepRunState;
 };
 
 export type Task = {
@@ -74,8 +76,8 @@ export type TaskDetail = Task & {
   runs?: Run[];
   messages?: Message[];
   workflowRun?: { id: string; status: string };
-  stepRuns?: Array<{ id: string; name?: string; step_order?: number; status: string; worker_id?: string }>;
-  currentStep?: { id: string; status: string; name?: string; worker_id?: string };
+  stepRuns?: StepRunState[];
+  currentStep?: StepRunState;
 };
 
 export type Run = {
@@ -461,5 +463,36 @@ export async function createWorkflowTemplateStep(templateId: string, body: Recor
 
 export async function getTaskWorkflow(taskId: string): Promise<TaskWorkflowState> {
   const r = await fetch(API + "/tasks/" + taskId + "/workflow", defaultFetchOptions);
+  return handleResponse(r);
+}
+
+
+export async function startStepRun(stepRunId: string) {
+  const r = await fetch(API + "/step-runs/" + stepRunId + "/start", { ...defaultFetchOptions, method: "POST" });
+  return handleResponse(r);
+}
+
+export async function completeStepRun(stepRunId: string, output: Record<string, unknown>) {
+  const r = await fetch(API + "/step-runs/" + stepRunId + "/complete", {
+    ...defaultFetchOptions,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ output }),
+  });
+  return handleResponse(r);
+}
+
+export async function failStepRun(stepRunId: string, errorInfo: Record<string, unknown>) {
+  const r = await fetch(API + "/step-runs/" + stepRunId + "/fail", {
+    ...defaultFetchOptions,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ errorInfo }),
+  });
+  return handleResponse(r);
+}
+
+export async function getStepRunDispatchPreview(stepRunId: string): Promise<{ item: Record<string, unknown> }> {
+  const r = await fetch(API + "/step-runs/" + stepRunId + "/dispatch-preview", defaultFetchOptions);
   return handleResponse(r);
 }
