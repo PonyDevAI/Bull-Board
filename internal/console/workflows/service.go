@@ -90,22 +90,19 @@ func (s *Service) CreateRunFromTask(taskID, workspaceID, workflowTemplateID stri
 			}
 		}
 		workerID := ""
-		if resolver != nil {
-			workerID, err = resolver.Resolve(workspaceID, resolvedRole)
-			if err != nil {
-				return "", err
+		status := "pending"
+		if idx == 0 {
+			if resolver != nil {
+				workerID, err = resolver.Resolve(workspaceID, resolvedRole)
+				if err != nil {
+					return "", err
+				}
 			}
-		}
-		status := "pending_unassigned"
-		if workerID != "" {
-			if idx == 0 {
-				status = "ready"
+			if workerID == "" {
+				status = "pending_unassigned"
 			} else {
-				status = "pending"
+				status = "ready"
 			}
-		}
-		if idx == 0 && workerID == "" {
-			status = "pending_unassigned"
 		}
 		_, err = tx.Exec(`INSERT INTO step_runs (id, workflow_run_id, workflow_step_template_id, worker_id, status, input_json, output_json, created_at, updated_at) VALUES (?, ?, ?, NULLIF(?, ''), ?, '{}', '{}', ?, ?)`, common.UUID(), runID, stepID, workerID, status, now, now)
 		if err != nil {
@@ -114,7 +111,15 @@ func (s *Service) CreateRunFromTask(taskID, workspaceID, workflowTemplateID stri
 		idx++
 	}
 	if idx > 0 {
-		_, err = tx.Exec(`UPDATE workflow_runs SET status = 'running', updated_at = ? WHERE id = ?`, now, runID)
+		initialStatus := "pending"
+		var hasActionable int
+		if err := tx.QueryRow(`SELECT CASE WHEN EXISTS (SELECT 1 FROM step_runs WHERE workflow_run_id = ? AND status IN ('ready', 'running')) THEN 1 ELSE 0 END`, runID).Scan(&hasActionable); err != nil {
+			return "", err
+		}
+		if hasActionable == 1 {
+			initialStatus = "running"
+		}
+		_, err = tx.Exec(`UPDATE workflow_runs SET status = ?, updated_at = ? WHERE id = ?`, initialStatus, now, runID)
 		if err != nil {
 			return "", err
 		}
