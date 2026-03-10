@@ -51,6 +51,17 @@ export type WorkflowStep = {
 
 export type StepRunState = { id: string; name?: string; step_order?: number; status: string; worker_id?: string };
 
+export type StepRunDispatchResult = {
+  step_run_id: string;
+  job_id: string;
+  job_status: string;
+  external_job_ref?: string;
+  execution_status: string;
+  output?: Record<string, unknown>;
+  response?: Record<string, unknown>;
+  artifacts?: { kind: string; uri: string; metadata?: Record<string, unknown> }[];
+};
+
 export type TaskWorkflowState = {
   workflow_run?: { id: string; status: string };
   step_runs?: StepRunState[];
@@ -494,5 +505,10 @@ export async function failStepRun(stepRunId: string, errorInfo: Record<string, u
 
 export async function getStepRunDispatchPreview(stepRunId: string): Promise<{ item: Record<string, unknown> }> {
   const r = await fetch(API + "/step-runs/" + stepRunId + "/dispatch-preview", defaultFetchOptions);
+  return handleResponse(r);
+}
+
+export async function dispatchStepRun(stepRunId: string): Promise<{ item: StepRunDispatchResult }> {
+  const r = await fetch(API + "/step-runs/" + stepRunId + "/dispatch", { ...defaultFetchOptions, method: "POST" });
   return handleResponse(r);
 }

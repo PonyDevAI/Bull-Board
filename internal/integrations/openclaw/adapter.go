@@ -14,6 +14,32 @@ type TaskPayload struct {
 
 type Adapter struct{}
 
+type PreparedDispatchRequest struct {
+	WorkflowRunID    string         `json:"workflow_run_id"`
+	StepRunID        string         `json:"step_run_id"`
+	TaskID           string         `json:"task_id"`
+	Worker           map[string]any `json:"worker"`
+	Role             map[string]any `json:"role"`
+	AgentApp         map[string]any `json:"agent_app"`
+	ExecutionBackend map[string]any `json:"execution_backend"`
+	ResolvedConfig   any            `json:"resolved_config"`
+	Input            any            `json:"input"`
+}
+
+type JobArtifact struct {
+	Kind     string         `json:"kind"`
+	URI      string         `json:"uri"`
+	Metadata map[string]any `json:"metadata"`
+}
+
+type ExecutionResult struct {
+	Status         string         `json:"status"`
+	ExternalJobRef string         `json:"external_job_ref"`
+	Output         any            `json:"output"`
+	Response       map[string]any `json:"response"`
+	Artifacts      []JobArtifact  `json:"artifacts"`
+}
+
 func NewAdapter() *Adapter { return &Adapter{} }
 func (a *Adapter) CreateSession(ctx context.Context, payload TaskPayload) (string, error) {
 	_ = ctx
@@ -41,4 +67,32 @@ func (a *Adapter) HandleExecutionResult(ctx context.Context, result map[string]a
 	_ = ctx
 	_ = result
 	return nil
+}
+
+func (a *Adapter) ExecutePreparedDispatch(ctx context.Context, prepared PreparedDispatchRequest) (ExecutionResult, error) {
+	_ = ctx
+	_ = prepared
+	stepID := prepared.StepRunID
+	if stepID == "" {
+		stepID = "step"
+	}
+	return ExecutionResult{
+		Status:         "succeeded",
+		ExternalJobRef: "openclaw-" + stepID,
+		Output: map[string]any{
+			"backend": "openclaw",
+			"result":  "minimal execution completed",
+		},
+		Response: map[string]any{
+			"accepted": true,
+			"runtime":  "openclaw",
+		},
+		Artifacts: []JobArtifact{{
+			Kind: "execution_log",
+			URI:  "openclaw://runs/" + stepID + "/log",
+			Metadata: map[string]any{
+				"source": "openclaw",
+			},
+		}},
+	}, nil
 }

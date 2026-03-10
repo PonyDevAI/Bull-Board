@@ -9,6 +9,7 @@ import (
 
 	"github.com/PonyDevAI/Bull-Board/internal/common"
 	"github.com/PonyDevAI/Bull-Board/internal/console/dispatch"
+	"github.com/PonyDevAI/Bull-Board/internal/console/execution"
 	"github.com/PonyDevAI/Bull-Board/internal/console/workflows"
 )
 
@@ -167,6 +168,26 @@ func (s *Server) handleStepRunActions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, map[string]any{"item": payload})
+	case "dispatch":
+		if r.Method != http.MethodPost {
+			http.Error(w, "", http.StatusMethodNotAllowed)
+			return
+		}
+		execSvc := execution.NewService(s.db)
+		result, err := execSvc.DispatchStepRun(r.Context(), stepRunID)
+		if err != nil {
+			if err == sql.ErrNoRows || err == workflows.ErrStepRunNotFound {
+				writeJSONError(w, "not found", http.StatusNotFound)
+				return
+			}
+			if err == dispatch.ErrStepRunWorkerMissing || err == execution.ErrStepNotDispatchable || strings.Contains(err.Error(), execution.ErrStepNotDispatchable.Error()) {
+				writeJSONError(w, err.Error(), http.StatusConflict)
+				return
+			}
+			writeJSONError(w, "dispatch failed", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]any{"item": result})
 	default:
 		http.NotFound(w, r)
 	}
