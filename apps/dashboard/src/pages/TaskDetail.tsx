@@ -26,7 +26,7 @@ export function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"messages" | "runs" | "artifacts">("messages");
+  const [tab, setTab] = useState<"canonical" | "messages" | "legacy-runs" | "legacy-artifacts">("canonical");
   const [dispatchPreview, setDispatchPreview] = useState<Record<string, unknown> | null>(null);
   const [dispatchResult, setDispatchResult] = useState<StepRunDispatchResult | null>(null);
   const [workflowErr, setWorkflowErr] = useState<string>("");
@@ -102,7 +102,10 @@ export function TaskDetail() {
 
   const runs = task.runs ?? [];
   const messages = task.messages ?? [];
-  const artifacts = runs.flatMap((r) => (r.artifacts ?? []).map((a) => ({ ...a, runId: r.id })));
+  const legacyArtifacts = runs.flatMap((r) => (r.artifacts ?? []).map((a) => ({ ...a, runId: r.id })));
+  const canonicalJobs = task.canonicalJobs ?? [];
+  const canonicalArtifacts = task.canonicalArtifacts ?? [];
+  const actionAudit = task.taskActionsAudit ?? [];
 
   return (
     <div className="space-y-block">
@@ -116,50 +119,49 @@ export function TaskDetail() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Workflow</CardTitle>
+          <CardTitle className="text-base">Canonical Workflow Execution</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {!task.workflowRun ? (
             <p className="text-slate-500 dark:text-slate-400">未绑定 Workflow</p>
           ) : (
             <>
-              <p className="text-sm">Run: <span className="font-medium">{task.workflowRun.id}</span> · {task.workflowRun.status}</p>
+              <p className="text-sm">WorkflowRun: <span className="font-medium">{task.workflowRun.id}</span> · {task.workflowRun.status}</p>
               {(task.stepRuns ?? []).map((sr) => {
                 const isCurrent = task.currentStep?.id === sr.id;
                 return (
                   <div key={sr.id} className={`rounded border p-2 text-sm dark:border-slate-600 ${isCurrent ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" : ""}`}>
-                    <div className="font-medium">#{sr.step_order ?? "-"} {sr.name ?? sr.id}</div>
+                    <div className="font-medium">StepRun #{sr.step_order ?? "-"}: {sr.name ?? sr.id}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">status={sr.status} · worker={sr.worker_id || "unassigned"}</div>
                     {isCurrent && <div className="mt-1 text-xs text-blue-700 dark:text-blue-300">Current actionable step</div>}
                   </div>
                 );
               })}
-              {task.currentStep && <p className="text-xs text-blue-600 dark:text-blue-400">Current step: {task.currentStep.name ?? task.currentStep.id}</p>}
 
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={startCurrentStep} disabled={!currentStep || currentStep.status !== "ready"}>Start Step</Button>
                 <Button size="sm" variant="outline" onClick={completeCurrentStep} disabled={!currentStep || currentStep.status !== "running"}>Complete Step</Button>
                 <Button size="sm" variant="outline" onClick={failCurrentStep} disabled={!currentStep || (currentStep.status !== "ready" && currentStep.status !== "running")}>Fail Step</Button>
-                <Button size="sm" variant="outline" onClick={previewDispatch} disabled={!currentStep}>Preview Dispatch</Button>
+                <Button size="sm" variant="outline" onClick={previewDispatch} disabled={!currentStep}>Prepare Dispatch</Button>
                 <Button size="sm" onClick={dispatchCurrentStep} disabled={!currentStep || currentStep.status !== "ready"}>Dispatch Step</Button>
               </div>
+
               {workflowErr && <p className="text-xs text-red-600 dark:text-red-400">{workflowErr}</p>}
               {dispatchPreview && (
                 <div className="rounded border p-2 dark:border-slate-600">
-                  <p className="mb-2 text-sm font-medium">Dispatch Preview</p>
+                  <p className="mb-2 text-sm font-medium">PrepareDispatch Result</p>
                   <pre className="max-h-80 overflow-auto rounded bg-slate-100 p-2 text-xs dark:bg-slate-900">{JSON.stringify(dispatchPreview, null, 2)}</pre>
                 </div>
               )}
               {dispatchResult && (
                 <div className="rounded border p-2 dark:border-slate-600">
-                  <p className="mb-2 text-sm font-medium">Dispatch Execution Result</p>
+                  <p className="mb-2 text-sm font-medium">Dispatch Result</p>
                   <div className="space-y-1 text-xs text-slate-700 dark:text-slate-300">
                     <p>job_id: <span className="font-mono">{dispatchResult.job_id}</span></p>
                     <p>job_status: {dispatchResult.job_status} · execution_status: {dispatchResult.execution_status}</p>
                     <p>external_job_ref: <span className="font-mono">{dispatchResult.external_job_ref || "-"}</span></p>
                     <p>artifacts: {dispatchResult.artifacts?.length ?? 0}</p>
                   </div>
-                  <pre className="mt-2 max-h-80 overflow-auto rounded bg-slate-100 p-2 text-xs dark:bg-slate-900">{JSON.stringify(dispatchResult, null, 2)}</pre>
                 </div>
               )}
             </>
@@ -169,98 +171,99 @@ export function TaskDetail() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">状态</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {STATUSES.map((s) => (
-            <Button
-              key={s}
-              variant={task.status === s ? "default" : "outline"}
-              size="sm"
-              className="min-h-[44px] min-w-[44px]"
-              onClick={() => handleStatus(s)}
-            >
-              {s.replace("_", " ")}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex gap-2">
-            {(["messages", "runs", "artifacts"] as const).map((t) => (
-              <Button
-                key={t}
-                variant={tab === t ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTab(t)}
-              >
-                {t === "messages" ? "对话" : t === "runs" ? "Runs" : "Artifacts"}
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["canonical", "Canonical Jobs/Artifacts"],
+              ["messages", "Legacy Messages"],
+              ["legacy-runs", "Legacy Runs"],
+              ["legacy-artifacts", "Legacy Artifacts"],
+            ] as const).map(([key, label]) => (
+              <Button key={key} variant={tab === key ? "default" : "outline"} size="sm" onClick={() => setTab(key)}>
+                {label}
               </Button>
             ))}
           </div>
         </CardHeader>
         <CardContent>
+          {tab === "canonical" && (
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-medium">Jobs ({canonicalJobs.length})</p>
+                {canonicalJobs.length === 0 ? (
+                  <p className="text-slate-500 dark:text-slate-400">暂无 canonical jobs</p>
+                ) : (
+                  <div className="space-y-2">
+                    {canonicalJobs.map((j) => (
+                      <div key={j.id} className="rounded border border-slate-200 p-2 text-sm dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+                        <p><span className="font-mono">{j.id}</span> · {j.status}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">StepRun: #{j.stepRunOrder ?? "-"} {j.stepRunName || j.stepRunId}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Backend: {j.executionBackendId || "-"} · ExternalRef: {j.externalJobRef || "-"}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium">Artifacts ({canonicalArtifacts.length})</p>
+                {canonicalArtifacts.length === 0 ? (
+                  <p className="text-slate-500 dark:text-slate-400">暂无 canonical artifacts</p>
+                ) : (
+                  <div className="space-y-2">
+                    {canonicalArtifacts.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 text-sm">
+                        <span>{a.kind}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">job={a.jobId}</span>
+                        <a href={artifactDownloadUrl(a.id)} target="_blank" rel="noreferrer" className="text-blue-600 underline dark:text-blue-400">
+                          {a.uri.split("/").pop()}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {tab === "messages" && (
             <div className="space-y-2">
               {messages.length === 0 ? (
                 <p className="text-slate-500 dark:text-slate-400">暂无消息</p>
               ) : (
                 messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className="rounded border bg-slate-50 p-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                  >
-                    <span className="font-medium text-slate-600 dark:text-slate-200">
-                      [{m.roundType}#{m.roundNo}] {m.author}:
-                    </span>{" "}
+                  <div key={m.id} className="rounded border bg-slate-50 p-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <span className="font-medium text-slate-600 dark:text-slate-200">[{m.roundType}#{m.roundNo}] {m.author}:</span>{" "}
                     <span className="whitespace-pre-wrap">{m.content}</span>
                   </div>
                 ))
               )}
             </div>
           )}
-          {tab === "runs" && (
+
+          {tab === "legacy-runs" && (
             <div className="space-y-2">
               {runs.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400">暂无 Runs</p>
+                <p className="text-slate-500 dark:text-slate-400">暂无 Legacy Runs</p>
               ) : (
                 runs.map((r) => (
                   <div key={r.id} className="rounded border border-slate-200 p-2 text-sm dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
-                    <p>
-                      <span className="font-medium">{r.mode}</span> — {r.status}
-                      {r.errorMessage && (
-                        <span className="text-red-600 dark:text-red-400"> — {r.errorMessage}</span>
-                      )}
-                    </p>
-                    {r.assignedWorkerId && (
-                      <p className="text-xs text-slate-600 dark:text-slate-400">
-                        指派: <span className="font-medium">{r.assignedWorkerId}</span>
-                      </p>
-                    )}
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {r.startedAt ?? ""} ~ {r.finishedAt ?? ""}
-                    </p>
+                    <p><span className="font-medium">{r.mode}</span> — {r.status}</p>
+                    {r.errorMessage && <p className="text-xs text-red-600 dark:text-red-400">{r.errorMessage}</p>}
                   </div>
                 ))
               )}
             </div>
           )}
-          {tab === "artifacts" && (
+
+          {tab === "legacy-artifacts" && (
             <div className="space-y-2">
-              {artifacts.length === 0 ? (
-                <p className="text-slate-500 dark:text-slate-400">暂无 artifacts</p>
+              {legacyArtifacts.length === 0 ? (
+                <p className="text-slate-500 dark:text-slate-400">暂无 Legacy artifacts</p>
               ) : (
-                artifacts.map((a) => (
+                legacyArtifacts.map((a) => (
                   <div key={a.id} className="flex items-center gap-2 text-sm">
                     <span>{a.type}</span>
-                    <a
-                      href={artifactDownloadUrl(a.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 underline dark:text-blue-400"
-                    >
+                    <a href={artifactDownloadUrl(a.id)} target="_blank" rel="noreferrer" className="text-blue-600 underline dark:text-blue-400">
                       {a.uri.split("/").pop()}
                     </a>
                   </div>
@@ -271,29 +274,45 @@ export function TaskDetail() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">状态 (Legacy Task Status)</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {STATUSES.map((s) => (
+            <Button key={s} variant={task.status === s ? "default" : "outline"} size="sm" className="min-h-[44px] min-w-[44px]" onClick={() => handleStatus(s)}>
+              {s.replace("_", " ")}
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
+
       {(task.status === "done" || task.status === "failed") && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Actions</CardTitle>
+            <CardTitle className="text-base">Legacy Task Actions (Secondary)</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {task.status === "done" && (
-              <Button onClick={async () => { await actionSubmit(id!); load(); }}>
-                Submit
-              </Button>
-            )}
-            <Button variant="outline" onClick={async () => { await actionReplan(id!); load(); }}>
-              Re-plan
-            </Button>
-            {task.status === "failed" && (
-              <>
-                <Button onClick={async () => { await actionRetry(id!); load(); }}>
-                  Retry
-                </Button>
-                <Button variant="outline" onClick={async () => { await actionContinueFix(id!); load(); }}>
-                  Continue Fix
-                </Button>
-              </>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {task.status === "done" && <Button onClick={async () => { await actionSubmit(id!); load(); }}>Submit</Button>}
+              <Button variant="outline" onClick={async () => { await actionReplan(id!); load(); }}>Re-plan</Button>
+              {task.status === "failed" && (
+                <>
+                  <Button onClick={async () => { await actionRetry(id!); load(); }}>Retry</Button>
+                  <Button variant="outline" onClick={async () => { await actionContinueFix(id!); load(); }}>Continue Fix</Button>
+                </>
+              )}
+            </div>
+            {actionAudit.length > 0 && (
+              <div className="space-y-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs dark:border-amber-800 dark:bg-amber-950/20">
+                <p className="font-medium">Legacy Task Action Audit</p>
+                {actionAudit.map((item) => (
+                  <div key={item.action}>
+                    <p><span className="font-mono">{item.action}</span> — {item.classification}</p>
+                    <p className="text-slate-600 dark:text-slate-400">{item.notes}</p>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>

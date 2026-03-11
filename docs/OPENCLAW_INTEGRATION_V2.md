@@ -1,7 +1,7 @@
 # OpenClaw Integration V2
 
 ## Integration role
-OpenClaw is an external execution backend runtime.
+OpenClaw is an external execution backend runtime target. Bull-Board remains control plane and source-of-truth.
 
 ## Adapter contract
 - CreateSession
@@ -9,26 +9,27 @@ OpenClaw is an external execution backend runtime.
 - ExecuteTask
 - FetchArtifacts
 - HandleExecutionResult
-- ExecutePreparedDispatch (minimal Bull-Board 2.0 step-run execution loop)
+- ExecutePreparedDispatch (minimal Bull-Board 2.0 StepRun loop)
 
-## Minimal StepRun dispatch loop (phase)
-Bull-Board 2.0 now supports a minimal end-to-end dispatch execution path driven by canonical workflow state:
+## Canonical minimal StepRun dispatch loop
+Bull-Board 2.0 executes a synchronous minimal loop today:
 
 1. `POST /api/step-runs/:id/dispatch`
-2. Console validates `step_runs.status=ready` and `worker_id` is present.
-3. Console builds canonical dispatch payload via `PrepareDispatchForStep`.
-4. Console resolves the assigned worker's `execution_backend_id` and invokes OpenClaw adapter.
-5. Console persists a `jobs` row (`request_json`, `result_json`, `external_job_ref`, `status`).
-6. Console persists any returned execution artifacts into `artifacts`.
-7. Console updates canonical workflow state:
-   - success: `step_runs` -> completed, `workflow_runs` advances
-   - failure: `step_runs` -> failed, `workflow_runs` -> failed
+2. Validate `step_runs.status=ready` and assigned `worker_id`
+3. Build dispatch payload via `PrepareDispatchForStep`
+4. Resolve worker `execution_backend_id` and invoke OpenClaw adapter
+5. Persist `jobs` row (`request_json`, `result_json`, `external_job_ref`, `status`)
+6. Persist returned `artifacts`
+7. Update canonical workflow state (`step_runs` / `workflow_runs`)
 
-This phase is intentionally synchronous/minimal. Advanced async orchestration, retries, approvals, and DAG/runtime controls are deferred.
+This is now real execution, not preview-only behavior.
 
-## Payload orientation
-Dispatch payload must include worker, role, agent app, model profile, skills, plugins, and task metadata; OpenClaw performs runtime execution and returns results.
+## Source-of-truth boundaries
+- Bull-Board canonical truth: `workflow_runs`, `step_runs`, `jobs`, `artifacts`
+- OpenClaw: runtime execution/session/tool handling only
 
-## Ownership split
-- Bull-Board: orchestration/configuration/workflow state/source-of-truth
-- OpenClaw: runtime execution/session/tool handling
+## Intentionally deferred
+- Async runtime lifecycle management and background reconciliation
+- Retry orchestration and failure policy engines
+- Approval gates
+- DAG/parallel execution controls
