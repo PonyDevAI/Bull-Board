@@ -82,6 +82,34 @@ export type Task = {
   workspaceName?: string;
 };
 
+
+export type CanonicalJob = {
+  id: string;
+  stepRunId: string;
+  status: string;
+  externalJobRef?: string;
+  executionBackendId?: string;
+  createdAt: string;
+  updatedAt: string;
+  stepRunName?: string;
+  stepRunOrder?: number;
+};
+
+export type CanonicalArtifact = {
+  id: string;
+  jobId: string;
+  stepRunId?: string;
+  kind: string;
+  uri: string;
+  metadataJson?: string;
+  createdAt: string;
+};
+
+export type TaskActionAuditItem = {
+  action: string;
+  classification: string;
+  notes: string;
+};
 export type TaskDetail = Task & {
   workspace?: Workspace;
   runs?: Run[];
@@ -89,6 +117,9 @@ export type TaskDetail = Task & {
   workflowRun?: { id: string; status: string };
   stepRuns?: StepRunState[];
   currentStep?: StepRunState;
+  canonicalJobs?: CanonicalJob[];
+  canonicalArtifacts?: CanonicalArtifact[];
+  taskActionsAudit?: TaskActionAuditItem[];
 };
 
 export type Run = {

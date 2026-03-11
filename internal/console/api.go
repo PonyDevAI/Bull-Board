@@ -186,21 +186,29 @@ func (s *Server) apiTasks(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "actions/submit":
+		// Legacy task action: temporary bridge for legacy submit flow.
+		// Canonical 2.0 execution should use step-run dispatch APIs.
 		if r.Method == http.MethodPost {
 			s.actionSubmit(w, taskID)
 			return
 		}
 	case "actions/replan":
+		// Legacy task action: temporary bridge while task status rounds still exist.
+		// Candidate for refactor into workflow-driven planning actions.
 		if r.Method == http.MethodPost {
 			s.actionReplan(w, taskID)
 			return
 		}
 	case "actions/retry":
+		// Legacy task action: retry currently re-enqueues legacy runtime jobs.
+		// Canonical future retry should be step-run/job aware in workflow execution.
 		if r.Method == http.MethodPost {
 			s.actionRetry(w, taskID)
 			return
 		}
 	case "actions/continue-fix":
+		// Legacy task action: status/message convenience path.
+		// Candidate for replacement with canonical workflow continuation controls.
 		if r.Method == http.MethodPost {
 			s.actionContinueFix(w, taskID)
 			return
@@ -344,6 +352,73 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 				break
 			}
 		}
+
+		jobs := make([]map[string]any, 0)
+		jobRows, err := s.db.Query(`SELECT j.id, j.step_run_id, j.status, COALESCE(j.external_job_ref, ''), COALESCE(j.execution_backend_id, ''), j.created_at, j.updated_at,
+			COALESCE(wst.name, ''), COALESCE(wst.step_order, 0)
+			FROM jobs j
+			JOIN step_runs sr ON sr.id = j.step_run_id
+			JOIN workflow_runs wr ON wr.id = sr.workflow_run_id
+			LEFT JOIN workflow_step_templates wst ON wst.id = sr.workflow_step_template_id
+			WHERE wr.task_id = ?
+			ORDER BY j.created_at DESC`, id)
+		if err == nil && jobRows != nil {
+			defer jobRows.Close()
+			for jobRows.Next() {
+				var jobID, stepRunID, jobStatus, externalRef, backendID, createdAt, updatedAt, stepName string
+				var stepOrder int
+				if err := jobRows.Scan(&jobID, &stepRunID, &jobStatus, &externalRef, &backendID, &createdAt, &updatedAt, &stepName, &stepOrder); err != nil {
+					continue
+				}
+				jobs = append(jobs, map[string]any{
+					"id":                 jobID,
+					"stepRunId":          stepRunID,
+					"status":             jobStatus,
+					"externalJobRef":     externalRef,
+					"executionBackendId": backendID,
+					"createdAt":          createdAt,
+					"updatedAt":          updatedAt,
+					"stepRunName":        stepName,
+					"stepRunOrder":       stepOrder,
+				})
+			}
+		}
+		task["canonicalJobs"] = jobs
+
+		artifacts := make([]map[string]any, 0)
+		artifactRows, err := s.db.Query(`SELECT a.id, a.job_id, COALESCE(a.step_run_id, ''), a.kind, a.uri, a.metadata_json, a.created_at
+			FROM artifacts a
+			JOIN jobs j ON j.id = a.job_id
+			JOIN step_runs sr ON sr.id = j.step_run_id
+			JOIN workflow_runs wr ON wr.id = sr.workflow_run_id
+			WHERE wr.task_id = ?
+			ORDER BY a.created_at DESC`, id)
+		if err == nil && artifactRows != nil {
+			defer artifactRows.Close()
+			for artifactRows.Next() {
+				var artifactID, jobID, stepRunID, kind, uri, metadataJSON, createdAt string
+				if err := artifactRows.Scan(&artifactID, &jobID, &stepRunID, &kind, &uri, &metadataJSON, &createdAt); err != nil {
+					continue
+				}
+				artifacts = append(artifacts, map[string]any{
+					"id":           artifactID,
+					"jobId":        jobID,
+					"stepRunId":    stepRunID,
+					"kind":         kind,
+					"uri":          uri,
+					"metadataJson": metadataJSON,
+					"createdAt":    createdAt,
+				})
+			}
+		}
+		task["canonicalArtifacts"] = artifacts
+	}
+
+	task["taskActionsAudit"] = []map[string]any{
+		{"action": "submit", "classification": "temporary legacy action", "notes": "bridges legacy submit queue; keep until submit is fully represented by canonical workflow/job transitions"},
+		{"action": "re-plan", "classification": "temporary legacy action", "notes": "updates legacy task planning rounds; should be refactored toward workflow-native planning controls"},
+		{"action": "retry", "classification": "candidate for later refactor", "notes": "currently retries via legacy run/job enqueue; canonical future retry should target step_runs/jobs directly"},
+		{"action": "continue-fix", "classification": "candidate for later removal/refactor", "notes": "status/message helper for legacy fix rounds, not part of canonical dispatch chain"},
 	}
 	writeJSON(w, task)
 }

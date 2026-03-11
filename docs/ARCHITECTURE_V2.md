@@ -6,10 +6,16 @@ Control Plane (Bull-Board Console)
 - Agent System: agent apps, skills, plugins, model profiles
 - Execution Layer: workers + execution backends + integrations
 - Workflow Layer: templates, runs, step runs, boards projection
-- Dispatch Layer: runtime call orchestration + result ingestion
+- Dispatch Layer: step-run dispatch orchestration + result ingestion
 
 Runtime Plane
 - OpenClaw runtime as external execution backend
+
+## Canonical execution chain
+Group → Role → Agent App → Worker → Execution Backend → Runtime(OpenClaw)
+
+Task execution is consolidated to:
+Task → WorkflowRun → StepRun → Dispatch → Job → Artifact → Workflow state update
 
 ## Backend module map
 - internal/console/org
@@ -23,13 +29,20 @@ Runtime Plane
 - internal/console/models
 
 ## API boundary
-Resource APIs under `/api/*` expose control plane data. Dispatch API issues runtime execution requests through backend adapters.
+Resource APIs under `/api/*` expose control plane data. Dispatch APIs execute step-runs through execution backend adapters.
 
 ## Invariants
 - Person model does not exist.
 - Board is projection only.
-- WorkflowRun/StepRun are source of workflow truth.
+- Canonical execution truth lives in `workflow_runs`, `step_runs`, `jobs`, `artifacts`.
+- Bull-Board is system-of-record; OpenClaw is never source-of-truth.
 
+## Deferred orchestration scope
+The following remain intentionally out of scope in this consolidation pass:
+- async runtime lifecycle management
+- retry orchestration
+- approvals
+- DAG/parallel/distributed orchestration
 
 ## Schema/bootstrap invariants
 - `db/schema_v2.sql` is the canonical source for Bull-Board 2.0 org/workforce/workflow tables.

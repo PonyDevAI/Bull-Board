@@ -1,24 +1,26 @@
 # Workflow System V2
 
-## Scope (Workflow progression + dispatch preparation)
-This phase covers Task → WorkflowTemplate → WorkflowRun → StepRun initialization, progression status transitions, and dispatch request preparation.
+## Scope (canonical workflow progression + dispatch execution)
+This phase consolidates Task → WorkflowRun → StepRun → Dispatch → Job → Artifact as the primary Bull-Board 2.0 execution path.
 
 ## Design principles
 - Template-driven orchestration.
-- Runtime truth in WorkflowRun and StepRun.
+- Canonical runtime truth in `workflow_runs`, `step_runs`, `jobs`, and `artifacts`.
 - Deterministic worker resolution by `(workspace_id, role_id)`.
 - Board is projection-only and never source-of-truth.
-- Dispatch preview is payload preparation only (no runtime execution in this phase).
+- Dispatch is real step execution (not preview-only).
 
-## Lifecycle
+## Canonical minimal execution loop
 1. Task is created with optional `workflow_template_id`.
 2. System creates one `workflow_run` for the task.
 3. System creates ordered `step_runs` from `workflow_step_templates.step_order`.
-4. For each step, role is resolved from `workflow_step_templates.role_id` or `config_json.role_id`.
-5. Worker resolver picks first active worker by `created_at ASC` in same workspace+role.
-6. Workflow progression APIs move step runs through start/complete/fail transitions.
-7. On completion, the next ordered step is activated and worker is resolved again.
-8. Dispatch preview returns canonical payload from current step state.
+4. Current StepRun is resolved to a worker by role.
+5. `PrepareDispatchForStep` builds canonical dispatch payload from StepRun context.
+6. `POST /api/step-runs/:id/dispatch` invokes OpenClaw via execution backend adapter.
+7. Console persists `jobs` result state and any returned `artifacts`.
+8. Console advances workflow state:
+   - success: step completed and next step activated (or workflow completed)
+   - failure: step failed and workflow failed
 
 ## Statuses
 ### workflow_runs.status
@@ -45,8 +47,8 @@ This phase covers Task → WorkflowTemplate → WorkflowRun → StepRun initiali
 - When all steps are completed, workflow run becomes `completed`.
 - Any failed step marks workflow run `failed`.
 
-## Dispatch preview contract
-`GET /api/step-runs/:id/dispatch-preview` returns a canonical payload:
+## Dispatch payload contract
+`GET /api/step-runs/:id/dispatch-preview` and dispatch preparation return canonical context:
 - `workflow_run_id`
 - `step_run_id`
 - `task_id`
@@ -57,9 +59,8 @@ This phase covers Task → WorkflowTemplate → WorkflowRun → StepRun initiali
 - `resolved_config`
 - `input`
 
-## Deferred to later phases
-- OpenClaw runtime execution invocation.
-- Job lifecycle management for external runtime states.
-- DAG/parallel branch scheduling.
-- Approval engines and policy gates.
+## Intentionally deferred
+- Async runtime lifecycle management and polling workers.
 - Retry orchestration policies.
+- Approval engines and policy gates.
+- DAG/parallel branch scheduling.
