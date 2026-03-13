@@ -37,6 +37,12 @@ Resource APIs under `/api/*` expose control plane data. Dispatch APIs execute st
 - Canonical execution truth lives in `workflow_runs`, `step_runs`, `jobs`, `artifacts`.
 - Bull-Board is system-of-record; OpenClaw is never source-of-truth.
 
+## Task domain canonicalization (current)
+- Primary task operational model: `tasks` + canonical execution chain (`workflow_runs` → `step_runs` → `jobs` → `artifacts`).
+- Task detail/read aggregation is expected to prioritize canonical execution entities and treat legacy sections as transitional/secondary.
+- Legacy task actions (`submit`, `re-plan`, `retry`, `continue-fix`) are intentionally isolated as temporary control surfaces until workflow-native replacements exist.
+- No new features should increase dependence on `legacy_*` runtime tables.
+
 ## Deferred orchestration scope
 The following remain intentionally out of scope in this consolidation pass:
 - async runtime lifecycle management

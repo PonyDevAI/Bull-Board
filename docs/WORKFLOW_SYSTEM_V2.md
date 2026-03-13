@@ -3,6 +3,10 @@
 ## Scope (canonical workflow progression + dispatch execution)
 This phase consolidates Task → WorkflowRun → StepRun → Dispatch → Job → Artifact as the primary Bull-Board 2.0 execution path.
 
+Legacy note:
+- Legacy task action endpoints and legacy run/message/job projections may still exist temporarily, but they are not canonical execution truth.
+- Canonical task detail must prioritize workflow/job/artifact state from the canonical chain.
+
 ## Design principles
 - Template-driven orchestration.
 - Canonical runtime truth in `workflow_runs`, `step_runs`, `jobs`, and `artifacts`.
@@ -64,3 +68,8 @@ This phase consolidates Task → WorkflowRun → StepRun → Dispatch → Job �
 - Retry orchestration policies.
 - Approval engines and policy gates.
 - DAG/parallel branch scheduling.
+
+## Transitional legacy containment
+- `submit`, `re-plan`, `retry`, and `continue-fix` are legacy/transitional task actions.
+- Current behavior may still mutate legacy task round/status fields for operator continuity.
+- Future direction is workflow-native controls (step/workflow scoped actions) without legacy runtime dependencies.

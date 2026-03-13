@@ -126,7 +126,10 @@ export function TaskDetail() {
             <p className="text-slate-500 dark:text-slate-400">未绑定 Workflow</p>
           ) : (
             <>
-              <p className="text-sm">WorkflowRun: <span className="font-medium">{task.workflowRun.id}</span> · {task.workflowRun.status}</p>
+              <div className="rounded border border-blue-200 bg-blue-50 p-2 text-sm dark:border-blue-900/40 dark:bg-blue-950/20">
+                <p>WorkflowRun: <span className="font-medium">{task.workflowRun.id}</span> · {task.workflowRun.status}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300">Canonical truth path: Task → WorkflowRun → StepRun → Dispatch → Job → Artifact</p>
+              </div>
               {(task.stepRuns ?? []).map((sr) => {
                 const isCurrent = task.currentStep?.id === sr.id;
                 return (
@@ -174,9 +177,9 @@ export function TaskDetail() {
           <div className="flex flex-wrap gap-2">
             {([
               ["canonical", "Canonical Jobs/Artifacts"],
-              ["messages", "Legacy Messages"],
-              ["legacy-runs", "Legacy Runs"],
-              ["legacy-artifacts", "Legacy Artifacts"],
+              ["messages", "Legacy Messages (Secondary)"],
+              ["legacy-runs", "Legacy Runs (Secondary)"],
+              ["legacy-artifacts", "Legacy Artifacts (Secondary)"],
             ] as const).map(([key, label]) => (
               <Button key={key} variant={tab === key ? "default" : "outline"} size="sm" onClick={() => setTab(key)}>
                 {label}
@@ -276,7 +279,7 @@ export function TaskDetail() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">状态 (Legacy Task Status)</CardTitle>
+          <CardTitle className="text-base">状态 (Legacy Task Status — Transitional)</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {STATUSES.map((s) => (

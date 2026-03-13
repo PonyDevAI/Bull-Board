@@ -28,6 +28,10 @@ This is now real execution, not preview-only behavior.
 - Bull-Board canonical truth: `workflow_runs`, `step_runs`, `jobs`, `artifacts`
 - OpenClaw: runtime execution/session/tool handling only
 
+## Task domain relationship
+- Task detail and task APIs should surface canonical execution state first (workflow run, step runs, jobs, artifacts).
+- Any legacy task actions or legacy run/message projections are transitional compatibility behavior, not integration truth.
+
 ## Intentionally deferred
 - Async runtime lifecycle management and background reconciliation
 - Retry orchestration and failure policy engines
