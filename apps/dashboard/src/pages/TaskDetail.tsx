@@ -48,7 +48,7 @@ export function TaskDetail() {
     load();
   };
 
-  const currentStep = task?.currentStep;
+  const currentStep = task?.currentStep ?? task?.step_runs?.find((sr) => sr.status === "ready" || sr.status === "running" || sr.status === "pending_unassigned");
 
   const startCurrentStep = async () => {
     if (!currentStep?.id) return;
@@ -103,8 +103,8 @@ export function TaskDetail() {
   const runs = task.runs ?? [];
   const messages = task.messages ?? [];
   const legacyArtifacts = runs.flatMap((r) => (r.artifacts ?? []).map((a) => ({ ...a, runId: r.id })));
-  const canonicalJobs = task.canonicalJobs ?? [];
-  const canonicalArtifacts = task.canonicalArtifacts ?? [];
+  const canonicalJobs = task.canonicalJobs ?? task.jobs ?? [];
+  const canonicalArtifacts = task.canonicalArtifacts ?? task.artifacts ?? [];
   const actionAudit = task.taskActionsAudit ?? [];
 
   return (
@@ -115,6 +115,8 @@ export function TaskDetail() {
         </Link>
         <h2 className="text-base font-semibold break-words md:text-lg">{task.title}</h2>
         <span className="rounded bg-slate-200 px-2 py-1 text-sm w-fit dark:bg-slate-600 dark:text-slate-200">{task.status}</span>
+        {task.statusSource && (<span className="rounded bg-blue-100 px-2 py-1 text-xs w-fit text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">source: {task.statusSource}</span>)}
+        {task.legacyStatus && task.legacyStatus !== task.status && (<span className="rounded bg-amber-100 px-2 py-1 text-xs w-fit text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">legacy status: {task.legacyStatus}</span>)}
       </div>
 
       <Card>
@@ -122,15 +124,15 @@ export function TaskDetail() {
           <CardTitle className="text-base">Canonical Workflow Execution</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {!task.workflowRun ? (
+          {!(task.workflowRun ?? task.workflow_run) ? (
             <p className="text-slate-500 dark:text-slate-400">未绑定 Workflow</p>
           ) : (
             <>
               <div className="rounded border border-blue-200 bg-blue-50 p-2 text-sm dark:border-blue-900/40 dark:bg-blue-950/20">
-                <p>WorkflowRun: <span className="font-medium">{task.workflowRun.id}</span> · {task.workflowRun.status}</p>
+                <p>WorkflowRun: <span className="font-medium">{(task.workflowRun ?? task.workflow_run)!.id}</span> · {(task.workflowRun ?? task.workflow_run)!.status}</p>
                 <p className="text-xs text-slate-600 dark:text-slate-300">Canonical truth path: Task → WorkflowRun → StepRun → Dispatch → Job → Artifact</p>
               </div>
-              {(task.stepRuns ?? []).map((sr) => {
+              {(task.stepRuns ?? task.step_runs ?? []).map((sr) => {
                 const isCurrent = task.currentStep?.id === sr.id;
                 return (
                   <div key={sr.id} className={`rounded border p-2 text-sm dark:border-slate-600 ${isCurrent ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" : ""}`}>
