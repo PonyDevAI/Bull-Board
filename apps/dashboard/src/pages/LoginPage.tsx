@@ -32,7 +32,7 @@ export function LoginPage({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg">
         <h1 className="mb-6 text-center text-xl font-semibold text-foreground">
-          Bull Board 控制台
+          Open Flow 控制台
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (

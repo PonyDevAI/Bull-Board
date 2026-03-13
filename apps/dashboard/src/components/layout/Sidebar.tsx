@@ -212,7 +212,7 @@ export function Sidebar({ collapsed, onCollapsedChange, isMobile, onClose }: Sid
                 <LayoutDashboard className="h-5 w-5" />
               </span>
             </div>
-            <span className="min-w-0 truncate text-sm font-medium text-foreground">Bull Board</span>
+            <span className="min-w-0 truncate text-sm font-medium text-foreground">Open Flow</span>
             <span
               className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded bg-emerald-500 px-1.5 text-xs font-medium text-white dark:bg-emerald-400 dark:text-slate-900"
               title="通知"

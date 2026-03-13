@@ -377,7 +377,7 @@ function UpdatesSection() {
 
   return (
     <div className="space-y-6">
-      <SettingRow label="当前版本" description="当前安装的 Bull Board 版本。">
+      <SettingRow label="当前版本" description="当前安装的 Open Flow 版本。">
         <span className="font-mono text-sm">{currentVersion}</span>
       </SettingRow>
 
@@ -538,7 +538,7 @@ export function SettingsPage() {
                 description="当前应用名称与基础信息（占位）。"
                 action={<button type="button" className={btnPrimary}>保存</button>}
               >
-                <PlaceholderInput value="Bull Board" />
+                <PlaceholderInput value="Open Flow" />
               </SettingRow>
               <SettingRow
                 label="时区/语言"

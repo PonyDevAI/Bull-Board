@@ -22,7 +22,7 @@ function Home() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">大脑指挥室</h2>
-      <p className="text-slate-600 dark:text-slate-400">Bull Board 看板控制台 v0.1</p>
+      <p className="text-slate-600 dark:text-slate-400">Open Flow 看板控制台 v0.1</p>
       <div className="flex flex-wrap gap-2">
         <Link to="/board" className="min-h-[44px] min-w-[44px] rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500">
           任务中心
@@ -261,12 +261,12 @@ export default function App() {
             >
               ☰
             </button>
-            <span className="truncate text-base font-bold text-slate-900 md:text-xl dark:text-slate-100">Bull Board 监控中心</span>
+            <span className="truncate text-base font-bold text-slate-900 md:text-xl dark:text-slate-100">Open Flow 监控中心</span>
             <span className="hidden text-slate-400 dark:text-slate-500 md:inline">🌙</span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
             <div className="hidden items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-600 sm:flex md:px-3 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              <span className="truncate max-w-[120px] md:max-w-none">Bull Board (S端)</span>
+              <span className="truncate max-w-[120px] md:max-w-none">Open Flow (S端)</span>
               <span className="text-slate-400 dark:text-slate-500">▾</span>
             </div>
             <button type="button" className="min-h-[44px] min-w-[44px] rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" title="刷新">
