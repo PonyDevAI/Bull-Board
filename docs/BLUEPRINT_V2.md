@@ -17,6 +17,15 @@ Bull-Board 2.0 is an AI Work OS control plane for managing workspace structure, 
 ## Canonical model
 Group → Role → Agent App → Worker → Execution Backend → Runtime(OpenClaw)
 
+Canonical execution chain:
+Task → WorkflowRun → StepRun → Dispatch → Job → Artifact → Workflow state update
+
+## Task canonicalization status (Phase 1)
+- Primary execution truth is now centered on `workflow_runs`, `step_runs`, `jobs`, `artifacts`.
+- Task detail/read APIs should treat canonical workflow execution entities as first-class.
+- Legacy task actions (`submit`, `re-plan`, `retry`, `continue-fix`) remain only as transitional behavior and must be visually/API-labeled as secondary.
+- Legacy task/run/message/job tables remain temporary compatibility storage and are not the target architecture.
+
 ## Product boundaries
 - Bull-Board owns orchestration, configuration, and workflow truth.
 - OpenClaw owns runtime execution/tool invocation/session execution.

@@ -291,128 +291,27 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 		Scan(&wsName, &wsRepo, &wsBranch); err == nil {
 		task["workspace"] = map[string]any{"id": workspaceId, "name": wsName, "repoPath": wsRepo, "defaultBranch": wsBranch}
 	}
-	runs, err := s.db.Query(`SELECT id, task_id, mode, status, error_kind, error_message, started_at, finished_at FROM legacy_runs WHERE task_id = ? ORDER BY started_at DESC`, id)
-	runList := []map[string]any{}
-	if err == nil && runs != nil {
-		defer runs.Close()
-		for runs.Next() {
-			var rid, tid, mode, st, errKind, errMsg, started, finished sql.NullString
-			runs.Scan(&rid, &tid, &mode, &st, &errKind, &errMsg, &started, &finished)
-			m := map[string]any{"id": rid.String, "taskId": tid.String, "mode": mode.String, "status": st.String}
-			if errKind.Valid {
-				m["errorKind"] = errKind.String
-			}
-			if errMsg.Valid {
-				m["errorMessage"] = errMsg.String
-			}
-			if started.Valid {
-				m["startedAt"] = started.String
-			}
-			if finished.Valid {
-				m["finishedAt"] = finished.String
-			}
-			var awID string
-			s.db.QueryRow(`SELECT assigned_worker_id FROM legacy_jobs WHERE run_id = ? LIMIT 1`, rid.String).Scan(&awID)
-			if awID != "" {
-				m["assignedWorkerId"] = awID
-			}
-			var artList []map[string]any
-			arts, _ := s.db.Query(`SELECT id, run_id, type, uri, created_at FROM legacy_artifacts WHERE run_id = ?`, rid.String)
-			if arts != nil {
-				for arts.Next() {
-					var aid, runId, typ, uri, cat string
-					arts.Scan(&aid, &runId, &typ, &uri, &cat)
-					artList = append(artList, map[string]any{"id": aid, "runId": runId, "type": typ, "uri": uri, "createdAt": cat})
-				}
-				arts.Close()
-			}
-			m["artifacts"] = artList
-			runList = append(runList, m)
+	canonical := s.loadTaskCanonicalReadModel(id)
+	if canonical.WorkflowRun != nil {
+		task["workflowRun"] = canonical.WorkflowRun
+		task["stepRuns"] = canonical.WorkflowRun.StepRuns
+		task["currentStep"] = canonical.CurrentStep
+		task["canonicalJobs"] = canonical.CanonicalJobs
+		task["canonicalArtifacts"] = canonical.CanonicalArtifacts
+		task["canonicalExecution"] = map[string]any{
+			"workflowRun":   canonical.WorkflowRun,
+			"stepRuns":      canonical.WorkflowRun.StepRuns,
+			"currentStep":   canonical.CurrentStep,
+			"jobs":          canonical.CanonicalJobs,
+			"artifacts":     canonical.CanonicalArtifacts,
+			"sourceOfTruth": "workflow_runs/step_runs/jobs/artifacts",
 		}
 	}
-	task["runs"] = runList
-	msgs, err2 := s.db.Query(`SELECT id, task_id, round_type, round_no, author, content, created_at FROM legacy_messages WHERE task_id = ? ORDER BY id ASC`, id)
-	msgList := []map[string]any{}
-	if err2 == nil && msgs != nil {
-		defer msgs.Close()
-		for msgs.Next() {
-			var mid, tid, roundType, author, content, cat string
-			var roundNo int
-			msgs.Scan(&mid, &tid, &roundType, &roundNo, &author, &content, &cat)
-			msgList = append(msgList, map[string]any{"id": mid, "taskId": tid, "roundType": roundType, "roundNo": roundNo, "author": author, "content": content, "createdAt": cat})
-		}
-	}
-	task["messages"] = msgList
-	if wfRun, err := workflows.NewService(s.db).GetWorkflowRunStateForTask(id); err == nil {
-		task["workflowRun"] = wfRun
-		task["stepRuns"] = wfRun.StepRuns
-		for _, sr := range wfRun.StepRuns {
-			if st, _ := sr["status"].(string); st == "running" || st == "ready" || st == "pending_unassigned" {
-				task["currentStep"] = sr
-				break
-			}
-		}
 
-		jobs := make([]map[string]any, 0)
-		jobRows, err := s.db.Query(`SELECT j.id, j.step_run_id, j.status, COALESCE(j.external_job_ref, ''), COALESCE(j.execution_backend_id, ''), j.created_at, j.updated_at,
-			COALESCE(wst.name, ''), COALESCE(wst.step_order, 0)
-			FROM jobs j
-			JOIN step_runs sr ON sr.id = j.step_run_id
-			JOIN workflow_runs wr ON wr.id = sr.workflow_run_id
-			LEFT JOIN workflow_step_templates wst ON wst.id = sr.workflow_step_template_id
-			WHERE wr.task_id = ?
-			ORDER BY j.created_at DESC`, id)
-		if err == nil && jobRows != nil {
-			defer jobRows.Close()
-			for jobRows.Next() {
-				var jobID, stepRunID, jobStatus, externalRef, backendID, createdAt, updatedAt, stepName string
-				var stepOrder int
-				if err := jobRows.Scan(&jobID, &stepRunID, &jobStatus, &externalRef, &backendID, &createdAt, &updatedAt, &stepName, &stepOrder); err != nil {
-					continue
-				}
-				jobs = append(jobs, map[string]any{
-					"id":                 jobID,
-					"stepRunId":          stepRunID,
-					"status":             jobStatus,
-					"externalJobRef":     externalRef,
-					"executionBackendId": backendID,
-					"createdAt":          createdAt,
-					"updatedAt":          updatedAt,
-					"stepRunName":        stepName,
-					"stepRunOrder":       stepOrder,
-				})
-			}
-		}
-		task["canonicalJobs"] = jobs
-
-		artifacts := make([]map[string]any, 0)
-		artifactRows, err := s.db.Query(`SELECT a.id, a.job_id, COALESCE(a.step_run_id, ''), a.kind, a.uri, a.metadata_json, a.created_at
-			FROM artifacts a
-			JOIN jobs j ON j.id = a.job_id
-			JOIN step_runs sr ON sr.id = j.step_run_id
-			JOIN workflow_runs wr ON wr.id = sr.workflow_run_id
-			WHERE wr.task_id = ?
-			ORDER BY a.created_at DESC`, id)
-		if err == nil && artifactRows != nil {
-			defer artifactRows.Close()
-			for artifactRows.Next() {
-				var artifactID, jobID, stepRunID, kind, uri, metadataJSON, createdAt string
-				if err := artifactRows.Scan(&artifactID, &jobID, &stepRunID, &kind, &uri, &metadataJSON, &createdAt); err != nil {
-					continue
-				}
-				artifacts = append(artifacts, map[string]any{
-					"id":           artifactID,
-					"jobId":        jobID,
-					"stepRunId":    stepRunID,
-					"kind":         kind,
-					"uri":          uri,
-					"metadataJson": metadataJSON,
-					"createdAt":    createdAt,
-				})
-			}
-		}
-		task["canonicalArtifacts"] = artifacts
-	}
+	legacy := s.loadTaskLegacySections(id)
+	task["runs"] = legacy.Runs
+	task["messages"] = legacy.Messages
+	task["legacySectionsStatus"] = "transitional_secondary"
 
 	task["taskActionsAudit"] = []map[string]any{
 		{"action": "submit", "classification": "temporary legacy action", "notes": "bridges legacy submit queue; keep until submit is fully represented by canonical workflow/job transitions"},
@@ -436,8 +335,12 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	id := common.UUID()
 	now := time.Now().UTC().Format(time.RFC3339)
+	workflowTemplateID := strings.TrimSpace(body.WorkflowTemplateID)
+	if workflowTemplateID == "" {
+		_ = s.db.QueryRow(`SELECT id FROM workflow_templates WHERE workspace_id = ? ORDER BY updated_at DESC LIMIT 1`, body.WorkspaceId).Scan(&workflowTemplateID)
+	}
 	_, err := s.db.Exec(`INSERT INTO legacy_tasks (id, workspace_id, title, description, workflow_template_id, created_at, updated_at) VALUES (?, ?, ?, ?, NULLIF(?,''), ?, ?)`,
-		id, body.WorkspaceId, body.Title, body.Description, body.WorkflowTemplateID, now, now)
+		id, body.WorkspaceId, body.Title, body.Description, workflowTemplateID, now, now)
 	if err != nil {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
@@ -446,17 +349,20 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	var planRound, fixRound int
 	s.db.QueryRow(`SELECT status, plan_round, fix_round, submit_state FROM legacy_tasks WHERE id = ?`, id).Scan(&status, &planRound, &fixRound, &submitState)
 	var workflowRunID string
-	if strings.TrimSpace(body.WorkflowTemplateID) != "" {
+	if workflowTemplateID != "" {
 		wf := workflows.NewService(s.db)
-		rid, runErr := wf.CreateRunFromTask(id, body.WorkspaceId, body.WorkflowTemplateID, workflows.NewDBWorkerResolver(s.db))
+		rid, runErr := wf.CreateRunFromTask(id, body.WorkspaceId, workflowTemplateID, workflows.NewDBWorkerResolver(s.db))
 		if runErr == nil {
 			workflowRunID = rid
 		}
 	}
 	w.WriteHeader(http.StatusCreated)
-	out := map[string]any{"id": id, "workspaceId": body.WorkspaceId, "title": body.Title, "description": body.Description, "status": status, "planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": now, "updatedAt": now, "workflowTemplateId": body.WorkflowTemplateID}
+	out := map[string]any{"id": id, "workspaceId": body.WorkspaceId, "title": body.Title, "description": body.Description, "status": status, "planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": now, "updatedAt": now, "workflowTemplateId": workflowTemplateID}
 	if workflowRunID != "" {
 		out["workflowRunId"] = workflowRunID
+		out["creationPath"] = "canonical_workflow_initialized"
+	} else {
+		out["creationPath"] = "legacy_transitional_no_workflow_template"
 	}
 	writeJSON(w, out)
 }
