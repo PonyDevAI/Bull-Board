@@ -74,6 +74,8 @@ export type Task = {
   title: string;
   description: string;
   status: string;
+  legacyStatus?: string;
+  statusSource?: string;
   planRound: number;
   fixRound: number;
   submitState: string;
@@ -114,11 +116,16 @@ export type TaskDetail = Task & {
   workspace?: Workspace;
   runs?: Run[];
   messages?: Message[];
+  legacy?: { runs?: Run[]; messages?: Message[] };
   workflowRun?: { id: string; status: string };
   stepRuns?: StepRunState[];
   currentStep?: StepRunState;
   canonicalJobs?: CanonicalJob[];
   canonicalArtifacts?: CanonicalArtifact[];
+  workflow_run?: { id: string; status: string };
+  step_runs?: StepRunState[];
+  jobs?: CanonicalJob[];
+  artifacts?: CanonicalArtifact[];
   taskActionsAudit?: TaskActionAuditItem[];
 };
 

@@ -54,3 +54,9 @@ The following remain intentionally out of scope in this consolidation pass:
 - `db/schema_v2.sql` is the canonical source for Bull-Board 2.0 org/workforce/workflow tables.
 - Go bootstrap may only define minimal system tables (`settings`, `users`, `sessions`, `api_keys`) and temporary legacy runtime tables (`legacy_tasks`, `legacy_runs`, `legacy_artifacts`, `legacy_messages`, `legacy_jobs`).
 - `workspaces` canonical columns are: `id`, `home_id`, `name`, `created_at`, `updated_at`. Runtime checkout fields are isolated in `workspace_runtime_configs`.
+
+### Legacy task action audit (current)
+- `submit`: **transitional** (bridge to legacy submit queue; target workflow-step submit semantics).
+- `re-plan`: **transitional** (still mutates legacy plan rounds; target workflow-native planning controls).
+- `retry`: **candidate for removal** (legacy run/job retry path should be replaced by canonical step/job retry).
+- `continue-fix`: **candidate for removal** (legacy fix-round helper, not canonical execution).

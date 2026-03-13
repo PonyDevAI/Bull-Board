@@ -253,9 +253,15 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&id, &workspaceId, &title, &desc, &st, &planRound, &fixRound, &submitState, &createdAt, &updatedAt, &workspaceName); err != nil {
 			continue
 		}
+		derivedStatus := s.deriveTaskExecutionStatus(id, st)
 		m := map[string]any{
-			"id": id, "workspaceId": workspaceId, "title": title, "description": desc, "status": st,
-			"planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": createdAt, "updatedAt": updatedAt,
+			"id": id, "workspaceId": workspaceId, "title": title, "description": desc, "status": derivedStatus,
+			"legacyStatus": st,
+			"planRound":    planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": createdAt, "updatedAt": updatedAt,
+		}
+		m["statusSource"] = "workflow_run"
+		if derivedStatus == st {
+			m["statusSource"] = "legacy_task_status_transitional"
 		}
 		if workspaceName.Valid {
 			m["workspaceName"] = workspaceName.String
@@ -279,9 +285,15 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 		writeJSONError(w, "db", http.StatusInternalServerError)
 		return
 	}
+	derivedStatus := s.deriveTaskExecutionStatus(id, status)
 	task := map[string]any{
-		"id": id, "workspaceId": workspaceId, "title": title, "description": desc, "status": status,
-		"planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": createdAt, "updatedAt": updatedAt,
+		"id": id, "workspaceId": workspaceId, "title": title, "description": desc, "status": derivedStatus,
+		"legacyStatus": status,
+		"planRound":    planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": createdAt, "updatedAt": updatedAt,
+	}
+	task["statusSource"] = "workflow_run"
+	if derivedStatus == status {
+		task["statusSource"] = "legacy_task_status_transitional"
 	}
 	if workflowTemplateID.Valid {
 		task["workflowTemplateId"] = workflowTemplateID.String
@@ -293,6 +305,10 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 	}
 	canonical := s.loadTaskCanonicalReadModel(id)
 	if canonical.WorkflowRun != nil {
+		task["workflow_run"] = canonical.WorkflowRun
+		task["step_runs"] = canonical.WorkflowRun.StepRuns
+		task["jobs"] = canonical.CanonicalJobs
+		task["artifacts"] = canonical.CanonicalArtifacts
 		task["workflowRun"] = canonical.WorkflowRun
 		task["stepRuns"] = canonical.WorkflowRun.StepRuns
 		task["currentStep"] = canonical.CurrentStep
@@ -311,13 +327,14 @@ func (s *Server) getTask(w http.ResponseWriter, id string) {
 	legacy := s.loadTaskLegacySections(id)
 	task["runs"] = legacy.Runs
 	task["messages"] = legacy.Messages
+	task["legacy"] = map[string]any{"runs": legacy.Runs, "messages": legacy.Messages}
 	task["legacySectionsStatus"] = "transitional_secondary"
 
 	task["taskActionsAudit"] = []map[string]any{
-		{"action": "submit", "classification": "temporary legacy action", "notes": "bridges legacy submit queue; keep until submit is fully represented by canonical workflow/job transitions"},
-		{"action": "re-plan", "classification": "temporary legacy action", "notes": "updates legacy task planning rounds; should be refactored toward workflow-native planning controls"},
-		{"action": "retry", "classification": "candidate for later refactor", "notes": "currently retries via legacy run/job enqueue; canonical future retry should target step_runs/jobs directly"},
-		{"action": "continue-fix", "classification": "candidate for later removal/refactor", "notes": "status/message helper for legacy fix rounds, not part of canonical dispatch chain"},
+		{"action": "submit", "classification": "transitional", "notes": "bridges legacy submit queue; future canonical submit should be represented as workflow step dispatch/job completion"},
+		{"action": "re-plan", "classification": "transitional", "notes": "increments legacy plan rounds; should evolve into workflow-template-aware planning controls"},
+		{"action": "retry", "classification": "candidate_for_removal", "notes": "currently retries legacy runs/jobs; replace with canonical step_run/job retry semantics"},
+		{"action": "continue-fix", "classification": "candidate_for_removal", "notes": "legacy fix-round helper; supersede with canonical workflow continuation controls"},
 	}
 	writeJSON(w, task)
 }
@@ -357,7 +374,12 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(http.StatusCreated)
-	out := map[string]any{"id": id, "workspaceId": body.WorkspaceId, "title": body.Title, "description": body.Description, "status": status, "planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": now, "updatedAt": now, "workflowTemplateId": workflowTemplateID}
+	derivedStatus := s.deriveTaskExecutionStatus(id, status)
+	out := map[string]any{"id": id, "workspaceId": body.WorkspaceId, "title": body.Title, "description": body.Description, "status": derivedStatus, "legacyStatus": status, "planRound": planRound, "fixRound": fixRound, "submitState": submitState, "createdAt": now, "updatedAt": now, "workflowTemplateId": workflowTemplateID}
+	out["statusSource"] = "workflow_run"
+	if derivedStatus == status {
+		out["statusSource"] = "legacy_task_status_transitional"
+	}
 	if workflowRunID != "" {
 		out["workflowRunId"] = workflowRunID
 		out["creationPath"] = "canonical_workflow_initialized"
@@ -365,6 +387,15 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		out["creationPath"] = "legacy_transitional_no_workflow_template"
 	}
 	writeJSON(w, out)
+}
+
+func (s *Server) deriveTaskExecutionStatus(taskID, legacyStatus string) string {
+	var workflowStatus string
+	err := s.db.QueryRow(`SELECT status FROM workflow_runs WHERE task_id = ? ORDER BY created_at DESC LIMIT 1`, taskID).Scan(&workflowStatus)
+	if err == nil && workflowStatus != "" {
+		return workflowStatus
+	}
+	return legacyStatus
 }
 
 func (s *Server) updateTaskStatus(w http.ResponseWriter, r *http.Request, taskID string) {

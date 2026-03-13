@@ -15,8 +15,8 @@ Legacy note:
 - Dispatch is real step execution (not preview-only).
 
 ## Canonical minimal execution loop
-1. Task is created with optional `workflow_template_id`.
-2. System creates one `workflow_run` for the task.
+1. Task is created with optional `workflow_template_id` (primary path).
+2. When `workflow_template_id` exists, system creates one `workflow_run` for the task.
 3. System creates ordered `step_runs` from `workflow_step_templates.step_order`.
 4. Current StepRun is resolved to a worker by role.
 5. `PrepareDispatchForStep` builds canonical dispatch payload from StepRun context.
@@ -73,3 +73,9 @@ Legacy note:
 - `submit`, `re-plan`, `retry`, and `continue-fix` are legacy/transitional task actions.
 - Current behavior may still mutate legacy task round/status fields for operator continuity.
 - Future direction is workflow-native controls (step/workflow scoped actions) without legacy runtime dependencies.
+
+
+## Task read model priority
+- Primary payload blocks: `workflow_run`, `step_runs`, `jobs`, `artifacts`.
+- Transitional payload blocks: legacy `runs`, `messages`, and other `legacy_*` projections.
+- Task status should be derived from latest workflow run status when present.
